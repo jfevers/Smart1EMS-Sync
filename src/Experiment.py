@@ -12,29 +12,47 @@ import matplotlib.pyplot as plt
 #print(t)
 #print(ts)
 
-dictBCNames = {}
+dictCounterNames = {}
+# buscounter
+dictCounterNames[1526658041] = 'Frequency [Hz]'
+dictCounterNames[1526471785] = '?'
+dictCounterNames[1526466886] = 'Bezug CGin [W]'
+dictCounterNames[1526466858] = 'Überschuss CGout[W]'
+dictCounterNames[1526467140] = '?'
 
-dictBCNames[1526658041] = 'Frequency'
-dictBCNames[1526471785] = '?'
-dictBCNames[1526466886] = '[kW]'
-dictBCNames[1526466858] = '[kW]'
-dictBCNames[1526467140] = '?'
-
+# calculation counter
+dictCounterNames[1526467264] = '?'
+dictCounterNames[1526467826] = '?'
+dictCounterNames[1526467678] = '?'
+dictCounterNames[1526477230] = '?'
+dictCounterNames[1526467213] = '?'
+dictCounterNames[1526477645] = '?'
+dictCounterNames[1526471371] = '?'
+dictCounterNames[1526477597] = '?'
+dictCounterNames[1526471474] = 'Batt laden [W]'
 
 strBasedir = '/home/friso/src/EMS-Readout/Testdata/FileDB/'
 
-rawBusCounter = glob.glob(strBasedir+'2020/Linear/buscounter*_global_11_20_2020.txt')
+fnBusCounter = glob.glob(strBasedir+'2020/Linear/buscounter*_global_11_21_2020.txt')
+fnCalcCounter = glob.glob(strBasedir+'2020/Linear/calculationcounter*_global_11_21_2020.txt')
 
-for strBCFile in rawBusCounter:
-    ms = re.match('.*buscounter_(\d*)_global_(\d*)_(\d*)_(\d*).txt',strBCFile)
+lstLegend = []
+
+for strBCFile in fnCalcCounter:
+    ms = re.match('.*counter_(\d*)_global_(\d*)_(\d*)_(\d*).txt',strBCFile)
     BcId = int(ms[1])
+
+#    if BcId != 1526471474:
+#        continue
+
     strDate=ms[4]+'-'+ms[2]+'-'+ms[3]
     print('BC: {}  date: {}'.format(BcId,strDate))
-    if BcId != 1526467140:
-        continue
-
+    if dictCounterNames.get(BcId):
+        lstLegend.append(str(BcId)+'  '+dictCounterNames[BcId])
+    else:
+        lstLegend.append(str(BcId)+'  unknown')
     lstTup = []
-
+    
     with open(strBCFile) as csvfile:
         reader = csv.reader(csvfile,delimiter=';')
         for row in reader:
@@ -46,8 +64,16 @@ for strBCFile in rawBusCounter:
             lstTup.append((intTS,fVal))
             # print('     strDT: {}  dt: {}   value: {}'.format(strTS,DT,fVal))
     lstTup.sort(key=lambda tup: tup[0])
+
+#    last=0
 #    for tup in lstTup:
-#        print('{}   {}'.format(tup[0],tup[1]))
+#        t = tup[0]
+#        diff = t-last
+#        print('{}   {}'.format(t,diff))
+#        last=t
+
     data = np.array(lstTup)
     plt.plot(data[:,0],data[:,1])
-    plt.show()
+
+plt.legend(lstLegend)
+plt.show()
