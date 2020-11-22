@@ -6,47 +6,74 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-#dt = datetime.datetime.now()
-#ts = dt.timestamp()
-#t = dt.time()
-#print(t)
-#print(ts)
-
+#%%
 dictCounterNames = {}
-# # buscounter
-# dictCounterNames[1526658041] = 'Frequency [Hz]'
-# dictCounterNames[1526471785] = '?' # 0
-dictCounterNames[1526466886] = 'Bezug CGin [W]' # noch mal abends prüfen
-dictCounterNames[1526466858] = 'Überschuss CGout[W]' # ? korreliert mit 1526467213 und 1526471371
-# dictCounterNames[1526467140] = '?' # 0
-# 
-# # calculation counter
-# dictCounterNames[1526467264] = '?' # 0
-# dictCounterNames[1526467826] = '?' # 0 
-# dictCounterNames[1526467678] = '?' # 0 
-# dictCounterNames[1526477230] = '?' # 0
-dictCounterNames[1526467213] = '?' # 500 - 2500
-# dictCounterNames[1526477645] = '?' # 0 
-dictCounterNames[1526471371] = '?' # etwas größer als 1526467213
-# dictCounterNames[1526477597] = '?' # 0 
-# dictCounterNames[1526471474] = 'Batt laden [W]'
+# buscounter
+dictCounterNames[1526658041] = 'Netzfrequzne [Hz]'
+dictCounterNames[1526471785] = 'WP Bezug' # 0
+dictCounterNames[1526466886] = 'Bezug' # 
+dictCounterNames[1526466858] = 'Überschuss' # ? korreliert mit 1526467213 und 1526471371
+# dictCounterNames[1526467140] = 'Heizstab Bezug' # 0
+
+# calculation counter
+#dictCounterNames[1526467264] = 'Bezug-HZ' # 0
+#dictCounterNames[1526467826] = 'Bezug-HZ-ECAR' # 0 
+#dictCounterNames[1526467678] = 'Überschuss+HZ+ECAR' # 0 
+dictCounterNames[1526477230] = 'Gesamtverbrauch' # 0
+dictCounterNames[1526467213] = 'Überschuss+HZ' # 500 - 2500
+dictCounterNames[1526477645] = 'Hausstrom' # 0 
+dictCounterNames[1526471371] = 'Überschuss+HZ+ECAR+Laden-Entlade' 
+#dictCounterNames[1526477597] = 'Wärmestrom' # 0 
+dictCounterNames[1526471474] = 'Bezug-HZ-ECAR-Discharge+Charge'
 
 
 # regulation
-#dictCounterNames[1526495469] = 'regulation ?'  # 100 - 160 ?
-#dictCounterNames[1526495508] = 'regulation ?' # -500 -  -2500 ? # anticorrelation with 1526466858, 1526467213, 1526471371
+dictCounterNames[1526495469] = 'BATT Power'
+dictCounterNames[1526495508] = 'Grid Power'
 
 # remote counter
-#dictCounterNames[1526469030] = 'Batt laden2'
-#dictCounterNames[1532951436] = 'PV2 ?'
+dictCounterNames[1526469030] = 'BATT Laden'
+dictCounterNames[1532951436] = 'PV DC Seitig'
 
 # remotesensor
-#dictCounterNames[1526468849] = 'remotesensor ?'
-#dictCounterNames[1526468909] = 'remotesensor ?' # const 3000
-#dictCounterNames[1526471294] = 'PowerFactor ?'
+dictCounterNames[1526468849] = 'BATT V'
+dictCounterNames[1526468909] = 'Max Laden' # const 3000
+dictCounterNames[1526471294] = 'BATT A'
+dictCounterNames[1526468812] = 'BATT Ladezustand'
+dictCounterNames[1526468926] = 'Max Entladen'
+
+# update names from file
+#strFName='/home/friso/src/EMS-Readout/src/Name-mapping.txt'
+#f = open(strFName)
+#for line in f:
+#    ms=re.match('.*_(\d*)_Name=(.*)',line)
+#    if ms:
+#        id = int(ms[1])
+#        #print('ID: {} Name: {}'.format(id,ms[2]))
+#        foundID=dictCounterNames.get(id)
+#        if foundID:
+#            dictCounterNames[id] = ms[2]
+
+
+#for id in dictCounterNames.keys():
+#    print('ID: {}  Name: {}'.format(id,dictCounterNames[id]))
+
+
+
+
+
+
+
+
 
 
 strBasedir = '/home/friso/src/EMS-Readout/Testdata/FileDB/'
+
+
+
+
+
+
 
 
 ### for debugging only
@@ -60,6 +87,10 @@ lstLegend = []
 #for strBCFile in fnBusCounter:
 #    ms = re.match('.*counter_(\d*)_global_(\d*)_(\d*)_(\d*).txt',strBCFile)
 #    BcId = int(ms[1])
+
+
+
+
 
 #for globbing
 strYear = '2020'
