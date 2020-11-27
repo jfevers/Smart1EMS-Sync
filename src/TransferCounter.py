@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import mysql.connector
 import os
-
+import dateutil.tz
 
 
 class EMSDataTransfer:
@@ -18,6 +18,7 @@ class EMSDataTransfer:
   def openDB(self):
     self.mydb = mysql.connector.connect(host="lala", user="EMSrw", password="NMe47u27gzsa", 
     database="EMSdata")
+    # mysql -h lala -u EMSro --password=eh3sJUWemvb9   EMSdata
     self.mycursor = self.mydb.cursor()
 
   def closeDB(self):
@@ -80,12 +81,14 @@ class EMSDataTransfer:
         reader = csv.reader(csvfile,delimiter=';')
         for row in reader:
             strTS = row[0] # read timestamp
-            intTS = int(strTS) - 3600 # correct by -1 hour
+            intTS = int(strTS) # correct by -1 hour
             strValue = row[1]
-            DT = datetime.datetime.fromtimestamp(intTS)  
+            
+            DT = datetime.datetime.utcfromtimestamp(intTS)  
+            dtUtc = DT.astimezone(dateutil.tz.gettz('UTC'))
             fVal = float(strValue)
-            if DT > dtNotBefore:
-              lstTupDay.append((intTS,DT,fVal)) # time-stamp, datetime, float-value
+            if dtUtc > dtNotBefore:
+              lstTupDay.append((intTS,dtUtc,fVal)) # time-stamp, datetime, float-value
             # print('     strDT: {}  dt: {}   value: {}'.format(strTS,DT,fVal))
     lstTupDay.sort(key=lambda tup: tup[0])
     self.dictCounterData[CounterId].extend(lstTupDay)
@@ -113,7 +116,7 @@ class EMSDataTransfer:
 
   def clearCounterTables(self):
     self.openDB()
-    strCmd = "select table_name from information_schema.tables where table_schema='EMSdata' and table_name like 'Counter\_%'"
+    strCmd = "select table_name from information_schema.tables where table_schema='EMSdata' and table_name like 'Ctr\_%'"
     self.mycursor.execute(strCmd)
     myresult = self.mycursor.fetchall()
     for line in myresult:
@@ -127,12 +130,13 @@ class EMSDataTransfer:
     strTabN = self.createTableName(cId) 
     self.openDB()
     strVals =""
-    for (intTS,DT,fVal) in lstTup:
+    for (intTS,dtUtc,fVal) in lstTup:
 #      if len(strVals)>0:
 #        strVals = strVals+','
 #      strVals = strVals+"({},{})".format(DT.isoformat(),fVal )
+      strUtc = dtUtc.strftime('%Y-%m-%d %H:%M:%S')
 
-      strCmd = "INSERT INTO {} (time, value) VALUES ('{}',{})".format(strTabN,DT.isoformat(),fVal )
+      strCmd = "INSERT INTO {} (time, value) VALUES ('{}',{})".format(strTabN,strUtc,fVal )
 
     #strCmd = "INSERT INTO {} (time, value) VALUES ".format(strTabN) + strVals
 
@@ -149,10 +153,11 @@ class EMSDataTransfer:
     self.mycursor.execute(strCmd)
     myresult = self.mycursor.fetchall()
     if len(myresult) == 0:
-      result = datetime.datetime(2020,11,13) # take earliest reasaonable date
+      result = datetime.datetime(2020,11,13) # take earliest reasaonable date, TZ does not matter here
     else:
-      result = myresult[0][0]
+      result = myresult[0][0].replace(tzinfo=dateutil.tz.gettz('UTC'))
     self.closeDB()
+      
     return result
 
 
@@ -190,7 +195,7 @@ class EMSDataTransfer:
 
 
 myUpdater = EMSDataTransfer()
-myUpdater.updateFiles()
+#myUpdater.updateFiles()
 myUpdater.readIdMapping()
 #myUpdater.updateIdMapping() # do not update every time
 #myUpdater.clearCounterTables()
