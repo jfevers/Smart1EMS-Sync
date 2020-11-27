@@ -5,7 +5,7 @@ import re
 import numpy as np
 import matplotlib.pyplot as plt
 import mysql.connector
-
+import os
 
 
 
@@ -57,15 +57,15 @@ class EMSDataTransfer:
   def updateOneCounterAllFiles(self,CounterId,dtNotBefore):
     CounterName = self.dictCounterNames[CounterId]
     allFilesForCounter = glob.glob(self.strBasedir+'*/Linear/*'+str(CounterId)+'_global_*_*_*.txt')
-
+    dateNotBefore = dtNotBefore.date()
     # for all date-files
     for strCFile in allFilesForCounter:
       ms = re.match('.*(\d*)_global_(\d*)_(\d*)_(\d*).txt',strCFile)
       year = int(ms[4])
       month = int(ms[2])
       day = int(ms[3])
-      dtFileDate = datetime.datetime(year,month,day)
-      if dtFileDate >=dtNotBefore:
+      dtFileDate = datetime.date(year,month,day)
+      if dtFileDate >=dateNotBefore:
         print('BC: {} Name: {}  date: {}'.format(CounterId,CounterName,dtFileDate))
         self.updateOneCounterOneFile(CounterId,strCFile,dtNotBefore)
 
@@ -164,10 +164,33 @@ class EMSDataTransfer:
       self.updateOneCounterAllFiles(CounterId, dtNotBefore)
 
 
+  def updateFiles(self):
+    strTargetDir = "~friso/Unsafed/EMS-Data/FileDB/2020"
+    # BACK="-d yesterday"
+    today = datetime.date.today()
+    # only one day
+    strPattern = "*global_{}_{}_{}.txt".format(today.month,today.day,today.year)
+    # complete history
+    # strPattern = "*global_*.txt" ## global
+   
+    # copy buscounter, calculationcounter, ... from Linear/
+    strCmd = "scp -r 10.0.0.4:/Smart1/FileDB/{}/Linear/{} {}/Linear/".format(today.year,strPattern,strTargetDir)
+    res = os.system(strCmd)
+    if res != 0:
+      raise("Command failed: "+strCmd)
 
+   
+    lstSubDirs =["B1_A5_S1","B2_A1_S1","B2_A1_S2"] 
+    for strSd in lstSubDirs:
+      # copy raw bus counter data
+      strCmd = "scp -r 10.0.0.4:/Smart1/FileDB/{}/{}/{}  {}/{}".format(today.year,strSd,strPattern,strTargetDir,strSd)
+      res = os.system(strCmd)
+      if res != 0:
+        raise("Command failed: "+strCmd)
 
 
 myUpdater = EMSDataTransfer()
+myUpdater.updateFiles()
 myUpdater.readIdMapping()
 #myUpdater.updateIdMapping() # do not update every time
 #myUpdater.clearCounterTables()
@@ -208,10 +231,10 @@ dictPlotIt[1526476850] = 'PV Erzeugung'
 
 
 
-lstLegend = []
-for cid in dictPlotIt.keys():
-  lstLegend.append(str(cid)+'  '+myUpdater.dictCounterNames[cid])
-  data = np.array(myUpdater.dictCounterData[cid])
-  plt.plot(data[:,1],data[:,2],'.')
-  plt.legend(lstLegend)
-plt.show()
+# lstLegend = []
+# for cid in dictPlotIt.keys():
+#   lstLegend.append(str(cid)+'  '+myUpdater.dictCounterNames[cid])
+#   data = np.array(myUpdater.dictCounterData[cid])
+#   plt.plot(data[:,1],data[:,2],'.')
+#   plt.legend(lstLegend)
+# plt.show()
