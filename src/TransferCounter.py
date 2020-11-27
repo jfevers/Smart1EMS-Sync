@@ -33,7 +33,9 @@ class EMSDataTransfer:
         ms=re.match('.*_(\d*)_Name=(.*)',line)
         if ms:
             id = int(ms[1])
-            self.dictCounterNames[id] = ms[2]
+            allFilesForCounter = glob.glob(self.strBasedir+'*/Linear/*'+str(id)+'_global_*_*_*.txt')
+            if len(allFilesForCounter) > 0:
+              self.dictCounterNames[id] = ms[2]
 
 
 
@@ -63,8 +65,8 @@ class EMSDataTransfer:
       month = int(ms[2])
       day = int(ms[3])
       dtFileDate = datetime.datetime(year,month,day)
-      print('BC: {} Name: {}  date: {}'.format(CounterId,CounterName,dtFileDate))
       if dtFileDate >=dtNotBefore:
+        print('BC: {} Name: {}  date: {}'.format(CounterId,CounterName,dtFileDate))
         self.updateOneCounterOneFile(CounterId,strCFile,dtNotBefore)
 
 
@@ -73,7 +75,6 @@ class EMSDataTransfer:
 
 
   def updateOneCounterOneFile(self,CounterId,strCFile,dtNotBefore):
-    self.openDB()
     lstTupDay = []
     with open(strCFile) as csvfile:
         reader = csv.reader(csvfile,delimiter=';')
@@ -83,35 +84,82 @@ class EMSDataTransfer:
             strValue = row[1]
             DT = datetime.datetime.fromtimestamp(intTS)  
             fVal = float(strValue)
-            lstTupDay.append((intTS,DT,fVal))
+            if DT > dtNotBefore:
+              lstTupDay.append((intTS,DT,fVal)) # time-stamp, datetime, float-value
             # print('     strDT: {}  dt: {}   value: {}'.format(strTS,DT,fVal))
-            strCmd = "INSERT INTO Counter_{} (time, value) VALUES ()".format(counterId)
-            self.mycursor.execute(strCmd)
     lstTupDay.sort(key=lambda tup: tup[0])
     self.dictCounterData[CounterId].extend(lstTupDay)
-    self.closeDB()
- 
+    self.sendData(CounterId, lstTupDay)
+
+
+  def createTableName(self,cid):
+    strTableName = "Ctr_{}_{}".format(cid,self.dictCounterNames[cid])
+    strTableName = strTableName.replace(' ','_').replace('+','_').replace('-','_')
+    return strTableName
+
+
 
   def prepareTable(self,counterId):
-    self.openDB()
-    
-    strCmd = "select table_name from information_schema.tables where table_name='Counter_{}'".format(counterId)
+    strTabN = self.createTableName(counterId)
+    self.openDB()    
+    strCmd = "select table_name from information_schema.tables where table_schema='EMSdata' and table_name='{}'".format(strTabN)
     self.mycursor.execute(strCmd)
     myresult = self.mycursor.fetchall()
     if len(myresult) == 0:
-      strCmd = "CREATE TABLE Counter_{} (time datetime PRIMARY KEY, value double)".format(counterId)
+      strCmd = "CREATE TABLE {} (time datetime PRIMARY KEY, value double)".format(strTabN)
+      self.mycursor.execute(strCmd)
+    self.closeDB()
+
+
+  def clearCounterTables(self):
+    self.openDB()
+    strCmd = "select table_name from information_schema.tables where table_schema='EMSdata' and table_name like 'Counter\_%'"
+    self.mycursor.execute(strCmd)
+    myresult = self.mycursor.fetchall()
+    for line in myresult:
+      strCmd = "DROP TABLE {}".format(line[0])
       self.mycursor.execute(strCmd)
     self.closeDB()
 
 
 
+  def sendData(self,cId, lstTup):
+    strTabN = self.createTableName(cId) 
+    self.openDB()
+    strVals =""
+    for (intTS,DT,fVal) in lstTup:
+#      if len(strVals)>0:
+#        strVals = strVals+','
+#      strVals = strVals+"({},{})".format(DT.isoformat(),fVal )
+
+      strCmd = "INSERT INTO {} (time, value) VALUES ('{}',{})".format(strTabN,DT.isoformat(),fVal )
+
+    #strCmd = "INSERT INTO {} (time, value) VALUES ".format(strTabN) + strVals
+
+      self.mycursor.execute(strCmd)
+    self.closeDB()
+
+
+
+
+  def getLatestEntry(self,cId):
+    strTabN = self.createTableName(cId) 
+    self.openDB()
+    strCmd = "select time from {} order by time desc limit 1".format(strTabN);
+    self.mycursor.execute(strCmd)
+    myresult = self.mycursor.fetchall()
+    if len(myresult) == 0:
+      result = datetime.datetime(2020,11,13) # take earliest reasaonable date
+    else:
+      result = myresult[0][0]
+    self.closeDB()
+    return result
+
+
   def updateAllCounter(self):
-    ### for debugging only
-    # self.dictCounterNames.clear()
-    # self.dictCounterNames[1526466858] = 'Überschuss CGout[W]'
-    dtNotBefore = datetime.datetime(2020,11,23)
     for CounterId in self.dictCounterNames.keys():
       self.prepareTable(CounterId)
+      dtNotBefore = self.getLatestEntry(CounterId)
       self.dictCounterData[CounterId] =[] 
       self.updateOneCounterAllFiles(CounterId, dtNotBefore)
 
@@ -121,7 +169,8 @@ class EMSDataTransfer:
 
 myUpdater = EMSDataTransfer()
 myUpdater.readIdMapping()
-# myUpdater.updateIdMapping() do not update every time
+#myUpdater.updateIdMapping() # do not update every time
+#myUpdater.clearCounterTables()
 myUpdater.updateAllCounter()
 
 
