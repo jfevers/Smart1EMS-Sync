@@ -169,17 +169,19 @@ class EMSDataTransfer:
       self.updateOneCounterAllFiles(CounterId, dtNotBefore)
 
 
-  def updateFiles(self):
+  def updateFiles(self, bYesterday):
     strTargetDir = "~friso/Unsafed/EMS-Data/FileDB/2020"
     # BACK="-d yesterday"
-    today = datetime.date.today()
+    sinceDate = datetime.date.today()
+    if bYesterday:
+      sinceDate = sinceDate- datetime.timedelta(days=1)
     # only one day
-    strPattern = "*global_{}_{}_{}.txt".format(today.month,today.day,today.year)
+    strPattern = "*global_{}_{}_{}.txt".format(sinceDate.month,sinceDate.day,sinceDate.year)
     # complete history
     # strPattern = "*global_*.txt" ## global
    
     # copy buscounter, calculationcounter, ... from Linear/
-    strCmd = "scp -r 10.0.0.4:/Smart1/FileDB/{}/Linear/{} {}/Linear/".format(today.year,strPattern,strTargetDir)
+    strCmd = "scp -r 10.0.0.4:/Smart1/FileDB/{}/Linear/{} {}/Linear/".format(sinceDate.year,strPattern,strTargetDir)
     res = os.system(strCmd)
     if res != 0:
       raise("Command failed: "+strCmd)
@@ -188,17 +190,17 @@ class EMSDataTransfer:
     lstSubDirs =["B1_A5_S1","B2_A1_S1","B2_A1_S2"] 
     for strSd in lstSubDirs:
       # copy raw bus counter data
-      strCmd = "scp -r 10.0.0.4:/Smart1/FileDB/{}/{}/{}  {}/{}".format(today.year,strSd,strPattern,strTargetDir,strSd)
+      strCmd = "scp -r 10.0.0.4:/Smart1/FileDB/{}/{}/{}  {}/{}".format(sinceDate.year,strSd,strPattern,strTargetDir,strSd)
       res = os.system(strCmd)
       if res != 0:
         raise("Command failed: "+strCmd)
 
 
 myUpdater = EMSDataTransfer()
-#myUpdater.updateFiles()
+myUpdater.updateFiles(bYesterday=False)
 myUpdater.readIdMapping()
 #myUpdater.updateIdMapping() # do not update every time
-#myUpdater.clearCounterTables()
+#myUpdater.clearCounterTables() # just to start over completely
 myUpdater.updateAllCounter()
 
 
