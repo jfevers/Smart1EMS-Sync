@@ -169,8 +169,14 @@ class EMSDataTransfer:
       self.updateOneCounterAllFiles(CounterId, dtNotBefore)
 
 
-  def updateFiles(self, bYesterday):
+  def updateFiles(self, bYesterday): 
+    myDir = os.path.dirname(os.path.realpath(__file__))
+    strIdFile = myDir+'/id_rsa_EMS'
+    strAddr='10.0.0.4'
     strTargetDir = "~friso/Unsafed/EMS-Data/FileDB/2020"
+
+    strScpBase = "scp -r -o \"KexAlgorithms +diffie-hellman-group1-sha1\" -i {} root@{}:/Smart1/FileDB".format(strIdFile,strAddr)
+
     # BACK="-d yesterday"
     sinceDate = datetime.date.today()
     if bYesterday:
@@ -181,7 +187,7 @@ class EMSDataTransfer:
     # strPattern = "*global_*.txt" ## global
    
     # copy buscounter, calculationcounter, ... from Linear/
-    strCmd = "scp -r 10.0.0.4:/Smart1/FileDB/{}/Linear/{} {}/Linear/".format(sinceDate.year,strPattern,strTargetDir)
+    strCmd = strScpBase + "/{}/Linear/{} {}/Linear/".format(sinceDate.year,strPattern,strTargetDir)
     res = os.system(strCmd)
     if res != 0:
       raise("Command failed: "+strCmd)
@@ -190,10 +196,14 @@ class EMSDataTransfer:
     lstSubDirs =["B1_A5_S1","B2_A1_S1","B2_A1_S2"] 
     for strSd in lstSubDirs:
       # copy raw bus counter data
-      strCmd = "scp -r 10.0.0.4:/Smart1/FileDB/{}/{}/{}  {}/{}".format(sinceDate.year,strSd,strPattern,strTargetDir,strSd)
+      strCmd = strScpBase + "/{}/{}/{}  {}/{}".format(sinceDate.year,strSd,strPattern,strTargetDir,strSd)
       res = os.system(strCmd)
       if res != 0:
         raise("Command failed: "+strCmd)
+
+
+
+
 
 
 myUpdater = EMSDataTransfer()
