@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 import mysql.connector
 import os
 import dateutil.tz
-
+import getopt
+import sys
 
 class EMSDataTransfer:
   def __init__(self):
@@ -202,56 +203,18 @@ class EMSDataTransfer:
         raise("Command failed: "+strCmd)
 
 
+#################   main  ##################
 
-
-
+bYesterday = False
+opts, argv = getopt.getopt(sys.argv[1:], "y")
+for k, v in opts:
+    if k == '-y':
+        bYesterday = True
 
 myUpdater = EMSDataTransfer()
-myUpdater.updateFiles(bYesterday=False)
+myUpdater.updateFiles(bYesterday)
 myUpdater.readIdMapping()
 #myUpdater.updateIdMapping() # do not update every time
 #myUpdater.clearCounterTables() # just to start over completely
 myUpdater.updateAllCounter()
 
-
-dictPlotIt  ={} 
-  # buscounter
-#dictPlotIt[1526658041] = 'Netzfrequzne [Hz]'
-dictPlotIt[1526471785] = 'WP Bezug' # 0
-dictPlotIt[1526466886] = 'Bezug' # 
-dictPlotIt[1526466858] = 'Überschuss' # ? korreliert mit 1526467213 und 1526471371
-#dictPlotIt[1526467140] = 'Heizstab Bezug' # 0
-# calculation counter
-#dictPlotIt[1526467264] = 'Bezug-HZ' # 0
-#dictPlotIt[1526467826] = 'Bezug-HZ-ECAR' # 0 
-#dictPlotIt[1526467678] = 'Überschuss+HZ+ECAR' # 0 
-#dictPlotIt[1526477230] = 'Gesamtverbrauch' # 0
-#dictPlotIt[1526467213] = 'Überschuss+HZ' # 500 - 2500
-dictPlotIt[1526477645] = 'Hausstrom' # 0 
-#dictPlotIt[1526471371] = 'Überschuss+HZ+ECAR+Laden-Entlade' 
-#dictPlotIt[1526477597] = 'Wärmestrom' # 0 
-#dictPlotIt[1526471474] = 'Bezug-HZ-ECAR-Discharge+Charge'
-# regulation
-#dictPlotIt[1526495469] = 'BATT Power'
-dictPlotIt[1526495508] = 'Grid Power'
-# remote counter
-#dictPlotIt[1526469030] = 'BATT Laden'
-dictPlotIt[1532951436] = 'PV DC Seitig'
-# pv_global
-dictPlotIt[1526476850] = 'PV Erzeugung'
-# remotesensor
-#dictPlotIt[1526468849] = 'BATT V'
-#dictPlotIt[1526468909] = 'Max Laden' # const 3000
-#dictPlotIt[1526471294] = 'BATT A'
-#dictPlotIt[1526468812] = 'BATT Ladezustand'
-#dictPlotIt[1526468926] = 'Max Entladen'
-
-
-
-# lstLegend = []
-# for cid in dictPlotIt.keys():
-#   lstLegend.append(str(cid)+'  '+myUpdater.dictCounterNames[cid])
-#   data = np.array(myUpdater.dictCounterData[cid])
-#   plt.plot(data[:,1],data[:,2],'.')
-#   plt.legend(lstLegend)
-# plt.show()
