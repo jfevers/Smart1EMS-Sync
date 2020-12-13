@@ -11,7 +11,7 @@ myApp = 0
 # global call-back for MQTT-client, called when connection is established
 def mqtt_onConnect(client, userdata, flags, rc):
     if rc==0:
-        logging.info("connected to MQTT {}, Returned code={}".format(rc))
+        logging.info("connected to MQTT, Returned code={}".format(rc))
     else:
         logging.info("Bad connection Returned code={}".format(rc))
 
