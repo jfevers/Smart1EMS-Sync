@@ -44,9 +44,8 @@ class Smart1XmlRpc2Mqtt:
         self.mqttClient.connect(self.strMqttAddr)
         self.mqttClient.loop_start()  #Start loop 
 #        self.mqttClient.subscribe(self.strMTopicSetCapture)
+        # dictXmlResult = self.XmlRpcProxy.getDeviceInfo(self.strPassword)
 
-#devices = proxy.getDeviceInfo('w9tknp7ibc')
-#print(devices)
 
     def describeChannels(self):
         try:
@@ -61,25 +60,55 @@ class Smart1XmlRpc2Mqtt:
 
 
 
+    def processXmlLinears(self):
+        dictXmlResult = self.XmlRpcProxy.getAllCurrentLinearValues(self.strPassword)
+        dictSensors = dictXmlResult['Reply']
+        resCode = dictXmlResult['ErrorCode']
+        if resCode == 0:
+            strRes = 'OK'
+        else:
+            strRes = dictXmlResult['ErrorString']
+
+        if resCode == 0:
+            for senid in dictSensors.keys():
+                sen = dictSensors[senid]
+                topic = self.strTopicBase + senid
+                self.mqttClient.publish(topic,json.dumps(sen))
+        return strRes
+
+
+    def processXmlPV(self,):
+        dictXmlResult = self.XmlRpcProxy.getPhotovoltaicConfiguration(self.strPassword)
+        dictReply = dictXmlResult['Reply']
+        resCode = dictXmlResult['ErrorCode']
+        if resCode == 0:
+            strRes = 'OK'
+        else:
+            strRes = dictXmlResult['ErrorString']
+
+        if resCode == 0:
+            dictInverters = dictReply['Inverters']
+            for invid in dictInverters.keys():
+                inv = dictInverters[invid]
+                topic = self.strTopicBase + invid
+                self.mqttClient.publish(topic,json.dumps(inv))
+            dictMF = dictReply['Modulfields']
+            for mfid in dictMF.keys():
+                mf = dictMF[mfid]
+                topic = self.strTopicBase + mfid
+                self.mqttClient.publish(topic,json.dumps(mf))
+        return strRes
+
+
+
+
     def processAll(self):
         strNow = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         try:
-            dictXmlResult = self.XmlRpcProxy.getAllCurrentLinearValues(self.strPassword)
-            dictSensors = dictXmlResult['Reply']
-            resCode = dictXmlResult['ErrorCode']
-            if resCode == 0:
-                strRes = 'OK'
-            else:
-                strRes = dictXmlResult['ErrorString']
-
+            strRes = self.processXmlLinears()
+            strRes = self.processXmlPV()
             self.mqttClient.publish(self.strTopicBase + 'last_result',strRes)
             self.mqttClient.publish(self.strTopicBase + 'last_update',strNow)
-
-            if resCode == 0:
-                for senid in dictSensors.keys():
-                    sen = dictSensors[senid]
-                    topic = self.strTopicBase + senid
-                    self.mqttClient.publish(topic,json.dumps(sen))
         except Exception as exc:
             strMsg = 'failed to query Smart1-EMS on {}: {}'.format(self.strXmlAddr,exc)
             logging.error(strMsg)
@@ -117,10 +146,11 @@ logging.basicConfig(format='%(asctime)s  %(levelname)s: %(message)s', level=logg
 
 
 myApp = Smart1XmlRpc2Mqtt() # set global pointer so call-basks can call into this instance
-bKeepRuning = True
 logging.info("starting XML2Mqtt service")
 
 myApp.describeChannels()
+
+bKeepRuning = True
 
 while bKeepRuning:
     myApp.processAll()
