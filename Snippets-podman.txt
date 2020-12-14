@@ -1,0 +1,6 @@
+podman unshare
+
+podman build -t my-python-app .
+podman create --name=Smart1EMSReadout my-python-app
+podman mount Smart1EMSReadout
+

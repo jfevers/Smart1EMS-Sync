@@ -4,8 +4,10 @@ import paho.mqtt.client as mqtt
 import time
 import json
 import datetime
+import signal
 
 myApp = 0
+bKeepRunning = True
 
 
 # global call-back for MQTT-client, called when connection is established
@@ -24,6 +26,12 @@ def mqtt_onMessage(client, userdata, message):
     logging.info("mqtt "+message.topic+" received: "+strMsg)
     myApp.mqttOnMessage(client,userdata,message)
 
+
+
+def sigTerm(signum, frame):
+    global bKeepRunning
+    logging.warning('Received SIGINT or SIGTERM, going down')
+    bKeepRunning = False
 
 
 
@@ -139,6 +147,14 @@ class Smart1XmlRpc2Mqtt:
 
 
 
+    def cleanUp(self):
+            logging.info("End of mainloop, cleaning-up")
+            self.mqttClient.publish(self.strTopicBase + 'last_result', "Service terminated")
+            time.sleep(2)
+            self.mqttClient.loop_stop()    #Stop mqtt loop 
+            logging.info("END")
+
+
 
 logging.basicConfig(format='%(asctime)s  %(levelname)s: %(message)s', level=logging.DEBUG)
 
@@ -150,8 +166,13 @@ logging.info("starting XML2Mqtt service")
 
 myApp.describeChannels()
 
-bKeepRuning = True
 
-while bKeepRuning:
+signal.signal(signal.SIGTERM, sigTerm)
+signal.signal(signal.SIGINT, sigTerm)
+
+
+while bKeepRunning:
     myApp.processAll()
     time.sleep(10)
+
+myApp.cleanUp()
