@@ -3,23 +3,47 @@ import glob
 import csv
 import re
 import numpy as np
-import matplotlib.pyplot as plt
 import mysql.connector
 import os
 import dateutil.tz
 import getopt
 import sys
 
-class EMSDataTransfer:
-  def __init__(self):
+
+
+
+
+class TransferCounter:
+  @staticmethod
+  def registerConfigEntries(config):
+    config['TransferCounter'] = {
+        'DataDir': '/my/data/tmp/dir',
+        'DB-host':'myDatabaseHost',
+        'DB-user':'myDatabaseUser',
+        'DB-pwd':'mySecretPassword',
+        'DB-db': 'myDbName',
+        'Ems-address':'name_or_ip_of_EMS',
+        'SSH-ID': 'id_or_file_with_priv_key'
+        }
+
+
+  def __init__(self,config):
     self.dictCounterNames = {}
-    self.strBasedir = '/home/friso/Unsafed/EMS-Data/FileDB/'
     self.dictCounterData ={} 
+    self.strMyDir = os.path.dirname(os.path.realpath(__file__))
+
+    self.strDataDir = config['TransferCounter']['DataDir']
+    self.strDbHost =  config['TransferCounter']['DB-host']
+    self.strDbUser =  config['TransferCounter']['DB-user']
+    self.strDbPwd =  config['TransferCounter']['DB-pwd']
+    self.strDbDb =   config['TransferCounter']['DB-db']
+    self.strSshId = config['TransferCounter']['SSH-ID']
+    self.strEmsAddr=config['TransferCounter']['ems-address']
+
 
   def openDB(self):
-    self.mydb = mysql.connector.connect(host="lala", user="EMSrw", password="NMe47u27gzsa", 
-    database="EMSdata")
-    # mysql -h lala -u EMSro --password=eh3sJUWemvb9   EMSdata
+    self.mydb = mysql.connector.connect(host=self.strDbHost, 
+    user=self.strDbUser, password=self.strDbPwd, database=self.strDbDb)
     self.mycursor = self.mydb.cursor()
 
   def closeDB(self):
@@ -27,20 +51,25 @@ class EMSDataTransfer:
     self.mydb.close()
 
 
-
+  '''
+  Read all defined mappings from IDs to names and check for which of them 
+  we have data files. 
+  '''
   def readIdMapping(self):
-    strFName='/home/friso/src/EMS-Readout/src/Name-mapping.txt'
+    strFName=self.strMyDir+'/Name-mapping.txt'
     f = open(strFName)
     for line in f:
         ms=re.match('.*_(\d*)_Name=(.*)',line)
         if ms:
             id = int(ms[1])
-            allFilesForCounter = glob.glob(self.strBasedir+'*/Linear/*'+str(id)+'_global_*_*_*.txt')
+            allFilesForCounter = glob.glob(self.strDataDir+'*/Linear/*'+str(id)+'_global_*_*_*.txt')
             if len(allFilesForCounter) > 0:
               self.dictCounterNames[id] = ms[2]
 
 
-
+  '''
+  Write name mapping to DB, drop table before
+  '''
   def updateIdMapping(self):
     self.openDB()
 
@@ -170,25 +199,21 @@ class EMSDataTransfer:
       self.updateOneCounterAllFiles(CounterId, dtNotBefore)
 
 
-  def updateFiles(self, bYesterday): 
-    myDir = os.path.dirname(os.path.realpath(__file__))
-    strIdFile = myDir+'/id_rsa_EMS'
-    strAddr='10.0.0.4'
-    strTargetDir = "~friso/Unsafed/EMS-Data/FileDB/2020"
+  def updateFiles(self, bAll=False, numDaysBack=0): 
+    strTargetDir = self.strDataDir+"/FileDB/2020"
 
-    strScpBase = "scp -r -o \"KexAlgorithms +diffie-hellman-group1-sha1\" -i {} root@{}:/Smart1/FileDB".format(strIdFile,strAddr)
-
-    # BACK="-d yesterday"
-    sinceDate = datetime.date.today()
-    if bYesterday:
-      sinceDate = sinceDate- datetime.timedelta(days=1)
-    # only one day
-    strPattern = "*global_{}_{}_{}.txt".format(sinceDate.month,sinceDate.day,sinceDate.year)
+    strScpBase = "scp -r -o \"KexAlgorithms +diffie-hellman-group1-sha1\" -i {} root@{}:/Smart1/FileDB".format(self.strSshId,self.strEmsAddr)
+    useDate = datetime.date.today()
+    useDate = useDate- datetime.timedelta(days=numDaysBack)
+    if bAll:
     # complete history
-    # strPattern = "*global_*.txt" ## global
+      strPattern = "*global_*.txt" ## global
+    else:
+      # only one day
+      strPattern = "*global_{}_{}_{}.txt".format(useDate.month,useDate.day,useDate.year)
    
     # copy buscounter, calculationcounter, ... from Linear/
-    strCmd = strScpBase + "/{}/Linear/{} {}/Linear/".format(sinceDate.year,strPattern,strTargetDir)
+    strCmd = strScpBase + "/{}/Linear/{} {}/Linear/".format(useDate.year,strPattern,strTargetDir)
     res = os.system(strCmd)
     if res != 0:
       raise("Command failed: "+strCmd)
@@ -197,24 +222,8 @@ class EMSDataTransfer:
     lstSubDirs =["B1_A5_S1","B2_A1_S1","B2_A1_S2"] 
     for strSd in lstSubDirs:
       # copy raw bus counter data
-      strCmd = strScpBase + "/{}/{}/{}  {}/{}".format(sinceDate.year,strSd,strPattern,strTargetDir,strSd)
+      strCmd = strScpBase + "/{}/{}/{}  {}/{}".format(useDate.year,strSd,strPattern,strTargetDir,strSd)
       res = os.system(strCmd)
       if res != 0:
         raise("Command failed: "+strCmd)
-
-
-#################   main  ##################
-
-bYesterday = False
-opts, argv = getopt.getopt(sys.argv[1:], "y")
-for k, v in opts:
-    if k == '-y':
-        bYesterday = True
-
-myUpdater = EMSDataTransfer()
-myUpdater.updateFiles(bYesterday)
-myUpdater.readIdMapping()
-#myUpdater.updateIdMapping() # do not update every time
-#myUpdater.clearCounterTables() # just to start over completely
-myUpdater.updateAllCounter()
 
