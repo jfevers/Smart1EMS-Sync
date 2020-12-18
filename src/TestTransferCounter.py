@@ -3,6 +3,9 @@ import configparser
 import os
 
 class TestTransferCounter:
+    '''
+    Just read config file, or generate a template, and create instance to test
+    '''
     def __init__(self):
         self.myDir = os.path.dirname(os.path.realpath(__file__))
 
@@ -22,7 +25,6 @@ class TestTransferCounter:
         self.myUpdater = TransferCounter.TransferCounter(config)            
 
     def run(self):
-
 #        bYesterday = False
 #        opts, argv = getopt.getopt(sys.argv[1:], "y")
 #        for k, v in opts:
@@ -35,7 +37,7 @@ class TestTransferCounter:
         self.myUpdater.readIdMapping()
         self.myUpdater.updateIdMapping() # do not update every time
         #self.myUpdater.clearCounterTables() # just to start over completely
-        #self.myUpdater.updateAllCounter()
+        self.myUpdater.updateAllCounter()
 
 
 

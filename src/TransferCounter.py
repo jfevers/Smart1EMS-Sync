@@ -62,7 +62,7 @@ class TransferCounter:
         ms=re.match('.*_(\d*)_Name=(.*)',line)
         if ms:
             id = int(ms[1])
-            allFilesForCounter = glob.glob(self.strDataDir+'*/Linear/*'+str(id)+'_global_*_*_*.txt')
+            allFilesForCounter = glob.glob(self.strDataDir+'/FileDB/*/Linear/*'+str(id)+'_global_*_*_*.txt')
             if len(allFilesForCounter) > 0:
               self.dictCounterNames[id] = ms[2]
 
@@ -87,7 +87,7 @@ class TransferCounter:
 
   def updateOneCounterAllFiles(self,CounterId,dtNotBefore):
     CounterName = self.dictCounterNames[CounterId]
-    allFilesForCounter = glob.glob(self.strBasedir+'*/Linear/*'+str(CounterId)+'_global_*_*_*.txt')
+    allFilesForCounter = glob.glob(self.strDataDir+'/FileDB/*/Linear/*'+str(CounterId)+'_global_*_*_*.txt')
     dateNotBefore = dtNotBefore.date()
     # for all date-files
     for strCFile in allFilesForCounter:
