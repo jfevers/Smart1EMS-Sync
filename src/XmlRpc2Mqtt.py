@@ -7,8 +7,6 @@ import datetime
 import signal
 
 myApp = 0
-bKeepRunning = True
-
 
 # global call-back for MQTT-client, called when connection is established
 def mqtt_onConnect(client, userdata, flags, rc):
@@ -28,21 +26,26 @@ def mqtt_onMessage(client, userdata, message):
 
 
 
-def sigTerm(signum, frame):
-    global bKeepRunning
-    logging.warning('Received SIGINT or SIGTERM, going down')
-    bKeepRunning = False
 
 
 
+class XmlRpc2Mqtt:
 
-class Smart1XmlRpc2Mqtt:
+    @staticmethod
+    def registerConfigEntries(config):
+        config['XmlRpc2Mqtt'] = {
+            'xmlrpc-addr': 'http://foo.bar:20000',
+            'unlock-key':'mySecretKey',
+            'mqtt-addr':'my.mqtt.host'
+            }
+
     """
     """
-    def __init__(self):
-        self.strXmlAddr = 'http://10.0.0.4:20000/'
-        self.strPassword = 'w9tknp7ibc'
-        self.strMqttAddr = "gelbekiste"
+    def __init__(self,config):
+        self.strXmlAddr = config['XmlRpc2Mqtt']['xmlrpc-addr']
+        self.strPassword = config['XmlRpc2Mqtt']['unlock-key']
+        self.strMqttAddr = config['XmlRpc2Mqtt']['mqtt-addr']
+        
         self.mqttClient = mqtt.Client("Smart1-EMS")
         self.strTopicBase = "Smart1-EMS/"
     
@@ -155,24 +158,3 @@ class Smart1XmlRpc2Mqtt:
             logging.info("END")
 
 
-
-logging.basicConfig(format='%(asctime)s  %(levelname)s: %(message)s', level=logging.DEBUG)
-
-
-
-
-myApp = Smart1XmlRpc2Mqtt() # set global pointer so call-basks can call into this instance
-logging.info("starting XML2Mqtt service")
-
-myApp.describeChannels()
-
-
-signal.signal(signal.SIGTERM, sigTerm)
-signal.signal(signal.SIGINT, sigTerm)
-
-
-while bKeepRunning:
-    myApp.processAll()
-    time.sleep(10)
-
-myApp.cleanUp()

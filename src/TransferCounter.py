@@ -2,7 +2,6 @@ import datetime
 import glob
 import csv
 import re
-import numpy as np
 import mysql.connector
 import os
 import dateutil.tz
