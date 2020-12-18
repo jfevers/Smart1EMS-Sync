@@ -1,5 +1,5 @@
 sudo bash !
-podman build -t smart1emsreadout .
-podman create --name=SmartEMS-Test smart1emsreadout
+podman build -t smart1emssync .
+podman create --name=SmartEMS-Test smart1emssync
 podman mount SmartEMS-Test
 

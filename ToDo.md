@@ -1,8 +1,0 @@
-- TransferCounter: remove literal '2020' 
-- TransferCounter: get file for name mapping from EMS (copy smart1.conf)
-- TransferCounter: integrate longterm-statistics
-- SyncXMLRPC: rework sleep() to be more responsive to Ctrl-Ctrl
-- SyncXMLRPC: integrate TransferCounter
-- Document entry to EMS
-- Document setup procedure
-- add missing files to docker
