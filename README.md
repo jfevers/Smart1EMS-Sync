@@ -19,11 +19,9 @@ Access to EMS:
 - add TCP-forwarding to router: 20000 -> 192.168.1.184:20000 (XML-RPC)
 
 Todos:
-- SyncSmart1EMS: implement basic service here and rework sleep() to be more responsive to Ctrl-C
-- add missing files to docker
-- SyncSmart1EMS: Find appropriate path for config in docker image (as volume)
 - SyncXMLRPC: integrate TransferCounter
 - TransferCounter: remove literal '2020' (till end of this year :-) )
 - TransferCounter: get file for name mapping from EMS (copy and filter smart1.conf)
 - TransferCounter: integrate longterm-statistics
 - Document setup procedure
+- Document OpenHab2 stuff
