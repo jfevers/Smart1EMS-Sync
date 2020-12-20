@@ -1,28 +1,13 @@
+import ServiceAppClass
 import TransferCounter
-import configparser
-import os
 
-class TestTransferCounter:
-    '''
-    Just read config file, or generate a template, and create instance to test
-    '''
+class TestTransferCounter(ServiceAppClass.ServiceAppClass):
+
     def __init__(self):
-        self.myDir = os.path.dirname(os.path.realpath(__file__))
+        super().__init__(TransferCounter.TransferCounter.registerConfigEntries, "TransferCounter")
+        self.myUpdater = TransferCounter.TransferCounter(self.config)            
 
-        conffilename = self.myDir+"/TransferCounter.conf"
-        print('Using config file: '+conffilename)
-        config = configparser.ConfigParser()
 
-        TransferCounter.TransferCounter.registerConfigEntries(config)
-
-        if os.path.isfile(conffilename):
-            config.read(conffilename)
-        else:
-            print('Wrote example config file: {}'.format(conffilename))
-            with open(conffilename, 'w') as configfile:
-                config.write(configfile)
-            exit(1)
-        self.myUpdater = TransferCounter.TransferCounter(config)            
 
     def run(self):
 #        bYesterday = False

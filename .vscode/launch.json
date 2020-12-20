@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal"
-            // "args" : ["-y"]
+            "args" : ["/home/friso/src/Sandbox/config"]
         }
     ]
 }
