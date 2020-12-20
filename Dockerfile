@@ -3,8 +3,8 @@ WORKDIR /usr/src/app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY src/Smart1Xml2Mqtt.py ./
+COPY src/* ./
+VOLUME /EMS/config /EMS/data
 
-#RUN pip install -r requirements.txt
 #EXPOSE 5000
-CMD [ "python", "./Smart1Xml2Mqtt.py" ]
+CMD [ "python", "./SyncSmart1EMS.py", "/EMS/config" ]
