@@ -11,6 +11,12 @@ import TransferCounter
 
 
 
+def str2Bool(strStr):
+    res = False
+    if strStr.lower() == 'true':
+        res = True
+    return res
+
 
 
 class SyncSmart1EMS(ServiceAppClass.ServiceAppClass):
@@ -19,6 +25,9 @@ class SyncSmart1EMS(ServiceAppClass.ServiceAppClass):
     def registerConfigEntries(config):
         XmlRpc2Mqtt.XmlRpc2Mqtt.registerConfigEntries(config)
         TransferCounter.TransferCounter.registerConfigEntries(config)
+        config['SyncSmart1EMS'] = {
+        'sync-counter': 'False',
+        }
 
 
 
@@ -27,9 +36,11 @@ class SyncSmart1EMS(ServiceAppClass.ServiceAppClass):
         self.myXml2Mqtt = XmlRpc2Mqtt.XmlRpc2Mqtt(self.config)            
         self.myTrfCntr = TransferCounter.TransferCounter(self.config)            
         self.myXml2Mqtt.describeChannels()
-
+        self.bSyncCounter = str2Bool(self.config['SyncSmart1EMS']['sync-counter'])
 
     def run(self):
+        if self.bSyncCounter:
+            self.myTrfCntr.checkAndPrepareDirectories()
         self.bKeepRunning = True
         tLast = datetime.datetime.now()-datetime.timedelta(seconds=60)
 

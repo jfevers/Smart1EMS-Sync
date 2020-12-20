@@ -29,7 +29,6 @@ class TransferCounter:
   def __init__(self,config):
     self.dictCounterNames = {}
     self.dictCounterData ={} 
-    self.strMyDir = os.path.dirname(os.path.realpath(__file__))
 
     self.strDataDir = config['TransferCounter']['DataDir']
     self.strDbHost =  config['TransferCounter']['DB-host']
@@ -38,6 +37,7 @@ class TransferCounter:
     self.strDbDb =   config['TransferCounter']['DB-db']
     self.strSshId = config['TransferCounter']['SSH-ID']
     self.strEmsAddr=config['TransferCounter']['ems-address']
+    self.strScpBase = "scp -r -o \"KexAlgorithms +diffie-hellman-group1-sha1\" -o StrictHostKeyChecking=no -i {} root@{}:/Smart1".format(self.strSshId,self.strEmsAddr)
 
 
   def openDB(self):
@@ -55,7 +55,7 @@ class TransferCounter:
   we have data files. 
   '''
   def readIdMapping(self):
-    strFName=self.strMyDir+'/Name-mapping.txt'
+    strFName=self.strDataDir+'/Name-mapping.txt'
     f = open(strFName)
     for line in f:
         ms=re.match('.*_(\d*)_Name=(.*)',line)
@@ -63,6 +63,8 @@ class TransferCounter:
             id = int(ms[1])
             allFilesForCounter = glob.glob(self.strDataDir+'/FileDB/*/Linear/*'+str(id)+'_global_*_*_*.txt')
             if len(allFilesForCounter) > 0:
+              strMixed = ms[2]
+              strFixed = strMixed.encode('utf-8')
               self.dictCounterNames[id] = ms[2]
 
 
@@ -199,30 +201,59 @@ class TransferCounter:
 
 
   def updateFiles(self, bAll=False, numDaysBack=0): 
-    strTargetDir = self.strDataDir+"/FileDB/2020"
-
-    strScpBase = "scp -r -o \"KexAlgorithms +diffie-hellman-group1-sha1\" -i {} root@{}:/Smart1/FileDB".format(self.strSshId,self.strEmsAddr)
-    useDate = datetime.date.today()
-    useDate = useDate- datetime.timedelta(days=numDaysBack)
+    strTargetDir = self.strDataDir+"/FileDB"
     if bAll:
     # complete history
-      strPattern = "*global_*.txt" ## global
-    else:
-      # only one day
-      strPattern = "*global_{}_{}_{}.txt".format(useDate.month,useDate.day,useDate.year)
-   
-    # copy buscounter, calculationcounter, ... from Linear/
-    strCmd = strScpBase + "/{}/Linear/{} {}/Linear/".format(useDate.year,strPattern,strTargetDir)
-    res = os.system(strCmd)
-    if res != 0:
-      raise("Command failed: "+strCmd)
-
-   
-    lstSubDirs =["B1_A5_S1","B2_A1_S1","B2_A1_S2"] 
-    for strSd in lstSubDirs:
-      # copy raw bus counter data
-      strCmd = strScpBase + "/{}/{}/{}  {}/{}".format(useDate.year,strSd,strPattern,strTargetDir,strSd)
+      strCmd = self.strScpBase + "/FileDB/* {}/".format(strTargetDir)
       res = os.system(strCmd)
       if res != 0:
-        raise("Command failed: "+strCmd)
+        raise Exception("Command failed: "+strCmd)
+    else:
+      useDate = datetime.date.today()
+      useDate = useDate- datetime.timedelta(days=numDaysBack)
+      # only one day
+      strPattern = "*global_{}_{}_{}.txt".format(useDate.month,useDate.day,useDate.year)
+         # copy buscounter, calculationcounter, ... from Linear/
+      strCmd = self.strScpBase + "/FileDB/{}/Linear/{} {}/{}/Linear/".format(useDate.year,strPattern,strTargetDir,useDate.year)
+      res = os.system(strCmd)
+      if res != 0:
+        raise Exception("Command failed: "+strCmd)
+   
+      lstSubDirs =["B1_A5_S1","B2_A1_S1","B2_A1_S2"] 
+      for strSd in lstSubDirs:
+        # copy raw bus counter data
+        strCmd = self.strScpBase + "/FileDB/{}/{}/{}  {}/{}/{}".format(useDate.year,strSd,strPattern,strTargetDir,useDate.year,strSd)
+        res = os.system(strCmd)
+        if res != 0:
+          raise Exception("Command failed: "+strCmd)
 
+
+
+
+
+
+  def checkAndPrepareDirectories(self):
+    strTarget1 = self.strDataDir+"/FileDB"
+    if not os.path.isdir(strTarget1):
+      os.mkdir(strTarget1)
+
+    strInitalSyncDone = self.strDataDir+"/InitialSyncDone.txt"
+    if not os.path.isfile(strInitalSyncDone):
+      with open(strInitalSyncDone,"w") as f:
+        f.write(datetime.datetime.now().isoformat())
+      self.updateFiles(bAll=True)
+
+    self.strNameFile = self.strDataDir+"/smart1.conf"
+    if not os.path.isfile(self.strNameFile):
+      strCmd = self.strScpBase + "/smart1.conf {}".format(self.strNameFile)
+      res = os.system(strCmd)
+      if res != 0:
+        raise Exception("Command failed: "+strCmd)
+      strCmd = "grep Name {} > {}/Name-mapping.txt".format(self.strNameFile,self.strDataDir)
+      res = os.system(strCmd)
+      if res != 0:
+        raise Exception("Command failed: "+strCmd)
+      self.readIdMapping()
+      self.updateIdMapping() # do not update every time
+    else:
+      self.readIdMapping()

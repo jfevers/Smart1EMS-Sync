@@ -46,6 +46,8 @@ class ServiceAppClass:
 
         if os.path.isfile(strConfFileName):
             self.config.read(strConfFileName)
+            with open(strConfFileName+'.new', 'w') as configfile:
+                self.config.write(configfile)
         else:
             print('Wrote example config file: {}'.format(strConfFileName))
             with open(strConfFileName, 'w') as configfile:

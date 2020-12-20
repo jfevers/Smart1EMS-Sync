@@ -15,12 +15,9 @@ class TestTransferCounter(ServiceAppClass.ServiceAppClass):
 #        for k, v in opts:
 #            if k == '-y':
 #                bYesterday = True
-
-#        self.myUpdater.updateFiles(bAll=True)
-#        self.myUpdater.updateFiles(numDaysBack=0) # today only
+        self.myUpdater.checkAndPrepareDirectories()
+#        self.myUpdater.updateFiles(numDaysBack=0)
 #        self.myUpdater.updateFiles(numDaysBack=1) # yesterday only
-        self.myUpdater.readIdMapping()
-        self.myUpdater.updateIdMapping() # do not update every time
         #self.myUpdater.clearCounterTables() # just to start over completely
         self.myUpdater.updateAllCounter()
 

@@ -20,8 +20,7 @@ Access to EMS:
 
 Todos:
 - SyncXMLRPC: integrate TransferCounter
-- TransferCounter: remove literal '2020' (till end of this year :-) )
-- TransferCounter: get file for name mapping from EMS (copy and filter smart1.conf)
+- Transfercounter: fix coding issu in samrt1.conf
 - TransferCounter: integrate longterm-statistics
 - Document setup procedure
 - Document OpenHab2 stuff
