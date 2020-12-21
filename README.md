@@ -24,9 +24,13 @@ The current state is, that both parts are integrated, but an encoding issue bloc
 Prepare access to EMS (the router is the one before the EMS, not your internat access router):
 - add TCP-forwarding inside router: 22 -> 192.168.1.184:22 (SSH)
 - add TCP-forwarding inside router: 20000 -> 192.168.1.184:20000 (XML-RPC)
+- generate a new key pair with no passphrase: `ssh-keygen -i id_rsa_EMS`
 - shutdown EMS and take out MicroSD-Card
-- sshkeygen -i id_rsa_EMS  (no passphrase)
-- cp id_rsa_EMS.pub /mnt/root/.ssh/authorized_keys 
-- insert MicroSD and restart EMS
-- ssh -o "KexAlgorithms +diffie-hellman-group1-sha1" -i id_rsa_EMS root@<ip_of_your_router>
+- mount root partition on /mnt
+- `cp id_rsa_EMS.pub /mnt/root/.ssh/authorized_keys`
+- `umount /mnt`
+- insert MicroSD into EMS and restart EMS
+- test login via ssh and public/private key:
+  `ssh -o "KexAlgorithms +diffie-hellman-group1-sha1" -i id_rsa_EMS root@<ip_of_your_router>`
+- test connection to XmlRPC: `telnet <ip_of_your_router> 20000`  
 
