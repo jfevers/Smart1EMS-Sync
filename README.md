@@ -37,7 +37,7 @@ Add the following into your MQTT-setup (adapt appropriatly, of course):
 
 ## Items
 
-Because JSONPATH cannot decode from string to int, I have two Item for each data point: One string and one number item. A rule is triggered by the string item, decoding the JSON into a number snd sending this number as update to the number item.
+Because JSONPATH cannot decode from string to int, I have two items for each data point: One string and one number item. A rule is triggered by the string item, decoding the JSON into a number sending this number as update to the number item.
 
     String EmsLastUpdate "EMS Last update"                 (gAllEms)    {channel="mqtt:topic:myBroker:Smart1Ems:EmsLastUpdate"} 
     String EmsLastResult "EMS Last result"                 (gAllEms)    {channel="mqtt:topic:myBroker:Smart1Ems:EmsLastResult"} 
@@ -78,7 +78,7 @@ Because JSONPATH cannot decode from string to int, I have two Item for each data
     end
 
 
-    // sum up two item from two PV-strings to the combined load of the inverter
+    // sum up two items from two PV-strings to the combined load of the inverter
     rule "DecodeWr1"
     when
         Item EmsInvWR1Str received update
@@ -93,7 +93,7 @@ Because JSONPATH cannot decode from string to int, I have two Item for each data
 
 
 # Setup
-Prepare access to EMS (the router is the one before the EMS, not your internat access router):
+Prepare access to EMS (the router is the one in front of the EMS, not your internet access router):
 - add TCP-forwarding inside router: 22 -> 192.168.1.184:22 (SSH)
 - add TCP-forwarding inside router: 20000 -> 192.168.1.184:20000 (XML-RPC)
 - generate a new key pair with no passphrase: `ssh-keygen -i id_rsa_EMS`
