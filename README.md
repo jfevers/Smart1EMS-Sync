@@ -9,7 +9,6 @@ The project consist of two different building blocks:
 - TransferCounter: Download intern statistic files (CSV as FileDB) and insert them into MariaDB, MySQL, ...
 
 The service SyncSmart1EMS put both parts together and runs them in background, ideally as docker container.
-The current state is, that both parts are integrated, but an encoding issue blocks the TransferCounter part. XmlRpc2Mqtt works reliable inside the container.
 
 
 # Todos:
