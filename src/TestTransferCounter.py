@@ -10,14 +10,10 @@ class TestTransferCounter(ServiceAppClass.ServiceAppClass):
 
 
     def run(self):
-#        bYesterday = False
-#        opts, argv = getopt.getopt(sys.argv[1:], "y")
-#        for k, v in opts:
-#            if k == '-y':
-#                bYesterday = True
+
         self.myUpdater.checkAndPrepareDirectories()
-#        self.myUpdater.updateFiles(numDaysBack=0)
-#        self.myUpdater.updateFiles(numDaysBack=1) # yesterday only
+        self.myUpdater.updateFiles(numDaysBack=1) # yesterday only
+        self.myUpdater.updateFiles(numDaysBack=0)
         #self.myUpdater.clearCounterTables() # just to start over completely
         self.myUpdater.updateAllCounter()
 

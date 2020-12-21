@@ -27,6 +27,7 @@ class SyncSmart1EMS(ServiceAppClass.ServiceAppClass):
         TransferCounter.TransferCounter.registerConfigEntries(config)
         config['SyncSmart1EMS'] = {
         'sync-counter': 'False',
+        'loglevel': 'INFO'
         }
 
 
@@ -37,13 +38,22 @@ class SyncSmart1EMS(ServiceAppClass.ServiceAppClass):
         self.myTrfCntr = TransferCounter.TransferCounter(self.config)            
         self.myXml2Mqtt.describeChannels()
         self.bSyncCounter = str2Bool(self.config['SyncSmart1EMS']['sync-counter'])
+        strLogLevel = self.config['SyncSmart1EMS']['loglevel']
+        logging.info('Setting loglevel to '+strLogLevel)
+        logging.getLogger().setLevel(strLogLevel)
+
+
 
     def run(self):
         if self.bSyncCounter:
+            logging.info("Preparing TransferCounter")
             self.myTrfCntr.checkAndPrepareDirectories()
+            self.myTrfCntr.updateIdMapping()
+
         self.bKeepRunning = True
         tLast = datetime.datetime.now()-datetime.timedelta(seconds=60)
-
+        tLastHourly = tLast.hour
+        tLastDay = tLast.day
         while self.bKeepRunning:
             tNow = datetime.datetime.now()
             tDiff = (tNow-tLast).total_seconds()
@@ -53,7 +63,22 @@ class SyncSmart1EMS(ServiceAppClass.ServiceAppClass):
                 tLast = tNow
             time.sleep(2)
 
-
+            if self.bSyncCounter:
+                bUpdateDB = False
+                # evers full hour get files from today
+                if tNow.hour > tLastHourly and  tNow.minute == 0 and tNow.second <10:
+                    logging.info('Hourly sync of files today')
+                    tLastHourly = tNow.hour
+                    self.myTrfCntr.updateFiles(numDaysBack=0)
+                    bUpdateDB = True
+                # every midnight get last file changes from yesterday
+                if tNow.day > tLastDay and tNow.hour == 0 and tNow.minute == 1 and tNow.second <10:
+                    logging.info('Daily sync of files from yesterday')
+                    tLastDay = tNow.day
+                    self.myTrfCntr.updateFiles(numDaysBack=1)
+                    bUpdateDB = True
+                if bUpdateDB:
+                    self.myTrfCntr.updateAllCounter() # insert into DB
         self.myXml2Mqtt.cleanUp()
 
 

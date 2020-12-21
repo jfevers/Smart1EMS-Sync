@@ -7,6 +7,23 @@ import os
 import dateutil.tz
 import getopt
 import sys
+import logging
+
+
+def cleanUtfSeqences(strIn):
+    strClean = ''
+    i=0
+    while i < len(strIn):
+        ## detect sequence of '\x' and take next two characters as hex
+        if strIn[i] == chr(92) and strIn[i+1] == chr(120):
+            bb = strIn[i+2:i+4]
+            c = chr(int(bb, 16))
+            i = i+4
+        else:
+            c = strIn[i]
+            i = i+1
+        strClean =strClean + c 
+    return strClean
 
 
 
@@ -55,16 +72,16 @@ class TransferCounter:
   we have data files. 
   '''
   def readIdMapping(self):
+    logging.debug("TransferCounter.readIdMapping()")
     strFName=self.strDataDir+'/Name-mapping.txt'
     f = open(strFName)
-    for line in f:
-        ms=re.match('.*_(\d*)_Name=(.*)',line)
+    for strLine in f:
+        strFixedUtf = cleanUtfSeqences(strLine)
+        ms=re.match('.*_(\d*)_Name=(.*)',strFixedUtf)
         if ms:
             id = int(ms[1])
             allFilesForCounter = glob.glob(self.strDataDir+'/FileDB/*/Linear/*'+str(id)+'_global_*_*_*.txt')
             if len(allFilesForCounter) > 0:
-              strMixed = ms[2]
-              strFixed = strMixed.encode('utf-8')
               self.dictCounterNames[id] = ms[2]
 
 
@@ -72,6 +89,7 @@ class TransferCounter:
   Write name mapping to DB, drop table before
   '''
   def updateIdMapping(self):
+    logging.debug("TransferCounter.updateIdMapping()")
     self.openDB()
 
     self.mycursor.execute("DROP TABLE IF EXISTS CounterNames")
@@ -98,7 +116,7 @@ class TransferCounter:
       day = int(ms[3])
       dtFileDate = datetime.date(year,month,day)
       if dtFileDate >=dateNotBefore:
-        print('BC: {} Name: {}  date: {}'.format(CounterId,CounterName,dtFileDate))
+        #logging.debug('updateing db for counter: {} Name: {}  date: {}'.format(CounterId,CounterName,dtFileDate))
         self.updateOneCounterOneFile(CounterId,strCFile,dtNotBefore)
 
 
@@ -193,6 +211,8 @@ class TransferCounter:
 
 
   def updateAllCounter(self):
+    logging.debug("TransferCounter.updateAllCounter()")
+
     for CounterId in self.dictCounterNames.keys():
       self.prepareTable(CounterId)
       dtNotBefore = self.getLatestEntry(CounterId)
@@ -201,6 +221,7 @@ class TransferCounter:
 
 
   def updateFiles(self, bAll=False, numDaysBack=0): 
+    logging.debug("TransferCounter.updateFiles()")
     strTargetDir = self.strDataDir+"/FileDB"
     if bAll:
     # complete history
