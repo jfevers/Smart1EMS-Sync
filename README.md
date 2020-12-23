@@ -16,6 +16,7 @@ The service SyncSmart1EMS put both parts together and runs them in background, i
 - TransferCounter: integrate longterm-statistics
 - Document setup procedure
 
+
 # OpenHAB
 ## Thing
 Add the following into your MQTT-setup (adapt appropriatly, of course):
