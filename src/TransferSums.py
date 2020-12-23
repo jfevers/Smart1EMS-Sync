@@ -4,68 +4,15 @@ import csv
 import re
 import mysql.connector
 import os
-import dateutil.tz
-import getopt
-import sys
 import logging
-
-
-def cleanUtfSeqences(strIn):
-    strClean = ''
-    i=0
-    while i < len(strIn):
-        ## detect sequence of '\x' and take next two characters as hex
-        if strIn[i] == chr(92) and strIn[i+1] == chr(120):
-            bb = strIn[i+2:i+4]
-            c = chr(int(bb, 16))
-            i = i+4
-        else:
-            c = strIn[i]
-            i = i+1
-        strClean =strClean + c 
-    return strClean
+import TransferCounter
 
 
 
 
 
-class TransferSums:
-  @staticmethod
-  def registerConfigEntries(config):
-    config['TransferCounter'] = {
-        'DataDir': '/my/data/tmp/dir',
-        'DB-host':'myDatabaseHost',
-        'DB-user':'myDatabaseUser',
-        'DB-pwd':'mySecretPassword',
-        'DB-db': 'myDbName',
-        'Ems-address':'name_or_ip_of_EMS',
-        'SSH-ID': 'id_or_file_with_priv_key'
-        }
-
-
-  def __init__(self,config):
-    self.dictCounterNames = {}
-    self.bBatchMode = False
-
-    self.strDataDir = config['TransferCounter']['DataDir']
-    self.strDbHost =  config['TransferCounter']['DB-host']
-    self.strDbUser =  config['TransferCounter']['DB-user']
-    self.strDbPwd =  config['TransferCounter']['DB-pwd']
-    self.strDbDb =   config['TransferCounter']['DB-db']
-    self.strSshId = config['TransferCounter']['SSH-ID']
-    self.strEmsAddr=config['TransferCounter']['ems-address']
-    self.strScpBase = "scp -r -o \"KexAlgorithms +diffie-hellman-group1-sha1\" -o StrictHostKeyChecking=no -i {} root@{}:/Smart1".format(self.strSshId,self.strEmsAddr)
-    self.dtNotBefore = datetime.date.fromisoformat('2020-11-01')
-
-  def openDB(self):
-    self.mydb = mysql.connector.connect(host=self.strDbHost, 
-    user=self.strDbUser, password=self.strDbPwd, database=self.strDbDb)
-    self.mycursor = self.mydb.cursor()
-
-  def closeDB(self):
-    self.mydb.commit()
-    self.mydb.close()
-
+class TransferSums(TransferCounter.TransferCounter):
+ 
 
   '''
   Read all defined mappings from IDs to names and check for which of them 
@@ -80,11 +27,9 @@ class TransferSums:
     for i in myresult:
             id = i[0]
             self.dictCounterNames[id] = i[1]
-
-
   
 
-  def updateOneCounterAllFiles(self,CounterId):
+  def updateOneCounterAllSumFiles(self,CounterId):
     CounterName = self.dictCounterNames[CounterId]
     # for all sum-per-day files
     allFilesForSumDays = glob.glob(self.strDataDir+'/FileDB/*/Linear/*'+str(CounterId)+'_avg_day_*_*.txt')
@@ -93,10 +38,10 @@ class TransferSums:
         ms = re.match('.*(\d*)_avg_day_(\d*)_(\d*).txt',strCFile)
         year = int(ms[3])
         month = int(ms[2])
-        lstTupOne = self.updateOneCounterOneFileDays(CounterId,strCFile,year,month)
+        lstTupOne = self.updateOneCounterOneSumFileDays(CounterId,strCFile,year,month)
         lstTupAll.extend(lstTupOne)
     lstTupAll.sort(key=lambda tup: tup[0])
-    self.sendData(CounterId, lstTupAll)
+    self.sendSumData(CounterId, lstTupAll)
 
     # for all sum-per-month files
     lstTupAll = []
@@ -105,18 +50,16 @@ class TransferSums:
     for strCFile in allFilesForSumMonth:
         ms = re.match('.*(\d*)_avg_month_(\d*).txt',strCFile)
         year = int(ms[2])
-        lstTupOne = self.updateOneCounterOneFileMonths(CounterId,strCFile,year)
+        lstTupOne = self.updateOneCounterOneSumFileMonths(CounterId,strCFile,year)
         lstTupAll.extend(lstTupOne)
     lstTupAll.sort(key=lambda tup: tup[0])
-    self.sendData(CounterId, lstTupAll)
+    self.sendSumData(CounterId, lstTupAll)
 
 
 
-
-
-  def updateOneCounterOneFileDays(self,CounterId,strCFile,year,month):
+  def updateOneCounterOneSumFileDays(self,CounterId,strCFile,year,month):
     # dtNotBefore = dtNotBefore-datetime.timedelta(hours=1) ## to debug time zone problem
-    logging.debug("updateOneCounterOneFileDays({}, {})".format(CounterId,strCFile))
+    logging.debug("updateOneCounterOneSumFileDays({}, {})".format(CounterId,strCFile))
     lstTupDay = []
     with open(strCFile) as csvfile:
         reader = csv.reader(csvfile,delimiter=';')
@@ -134,8 +77,8 @@ class TransferSums:
     return lstTupDay
    
 
-  def updateOneCounterOneFileMonths(self,CounterId,strCFile,year):
-    logging.debug("updateOneCounterOneFileMonths({}, {})".format(CounterId,strCFile))
+  def updateOneCounterOneSumFileMonths(self,CounterId,strCFile,year):
+    logging.debug("updateOneCounterOneSumFileMonths({}, {})".format(CounterId,strCFile))
     lstTupMonth = []
     with open(strCFile) as csvfile:
         reader = csv.reader(csvfile,delimiter=';')
@@ -152,15 +95,15 @@ class TransferSums:
 
 
 
-  def createTableName(self,cid):
+  def createSumTableName(self,cid):
     strTableName = "Sum_{}_{}".format(cid,self.dictCounterNames[cid])
     strTableName = strTableName.replace(' ','_').replace('+','_').replace('-','_')
     return strTableName
 
 
 
-  def prepareTable(self,counterId):
-    strTabN = self.createTableName(counterId)
+  def prepareSumTable(self,counterId):
+    strTabN = self.createSumTableName(counterId)
     self.openDB()    
     strCmd = "select table_name from information_schema.tables where table_schema='EMSdata' and table_name='{}'".format(strTabN)
     self.mycursor.execute(strCmd)
@@ -183,8 +126,8 @@ class TransferSums:
 
 
 
-  def sendData(self,cId, lstTup):
-    strTabN = self.createTableName(cId) 
+  def sendSumData(self,cId, lstTup):
+    strTabN = self.createSumTableName(cId) 
     self.openDB()
     strVals =""   
     for (strId, year,month,day,fVal) in lstTup:
@@ -197,13 +140,12 @@ class TransferSums:
 
 
 
-
   def updateAllSums(self):
       logging.debug("updateAllSums()")
       self.clearSumTables()
       for CounterId in self.dictCounterNames.keys():
-          self.prepareTable(CounterId)
-          self.updateOneCounterAllFiles(CounterId, )
+          self.prepareSumTable(CounterId)
+          self.updateOneCounterAllSumFiles(CounterId, )
 
 
 

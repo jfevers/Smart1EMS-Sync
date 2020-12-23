@@ -39,7 +39,8 @@ class TransferCounter:
         'DB-pwd':'mySecretPassword',
         'DB-db': 'myDbName',
         'Ems-address':'name_or_ip_of_EMS',
-        'SSH-ID': 'id_or_file_with_priv_key'
+        'SSH-ID': 'id_or_file_with_priv_key',
+        'date-not-before': '2020-11-01'
         }
 
 
@@ -55,7 +56,7 @@ class TransferCounter:
     self.strSshId = config['TransferCounter']['SSH-ID']
     self.strEmsAddr=config['TransferCounter']['ems-address']
     self.strScpBase = "scp -r -o \"KexAlgorithms +diffie-hellman-group1-sha1\" -o StrictHostKeyChecking=no -i {} root@{}:/Smart1".format(self.strSshId,self.strEmsAddr)
-
+    self.dtNotBefore = datetime.date.fromisoformat(config['TransferCounter']['date-not-before'])
 
   def openDB(self):
     self.mydb = mysql.connector.connect(host=self.strDbHost, 
