@@ -12,9 +12,10 @@ class TestTransferCounter(ServiceAppClass.ServiceAppClass):
     def run(self):
 
         self.myUpdater.checkAndPrepareDirectories()
-        self.myUpdater.updateFiles(numDaysBack=1) # yesterday only
-        self.myUpdater.updateFiles(numDaysBack=0)
-        #self.myUpdater.clearCounterTables() # just to start over completely
+#        self.myUpdater.dictCounterNames[1526466886]  = 'Bezug' # just debug one counter
+#        self.myUpdater.updateFiles(numDaysBack=1) # yesterday only
+#        self.myUpdater.updateFiles(numDaysBack=0)
+        self.myUpdater.clearCounterTables() # just to start over completely
         self.myUpdater.updateAllCounter()
 
 

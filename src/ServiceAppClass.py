@@ -39,7 +39,7 @@ class ServiceAppClass:
             logging.error("Usage: "+strAppName+" <config_dir_path>")
             exit(1)
         strConfFileName = sys.argv[1]+"/"+strAppName+".conf"
-        print('Using config file: '+strConfFileName)
+        logging.info('Using config file: '+strConfFileName)
         self.config = configparser.ConfigParser()
 
         fnctRegisterConfig(self.config)

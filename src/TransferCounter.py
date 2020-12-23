@@ -125,16 +125,19 @@ class TransferCounter:
 
 
   def updateOneCounterOneFile(self,CounterId,strCFile,dtNotBefore):
+    # dtNotBefore = dtNotBefore-datetime.timedelta(hours=1) ## to debug time zone problem
     lstTupDay = []
     with open(strCFile) as csvfile:
         reader = csv.reader(csvfile,delimiter=';')
         for row in reader:
             strTS = row[0] # read timestamp
-            intTS = int(strTS) # correct by -1 hour
-            strValue = row[1]
-            
+            intTS = int(strTS) #
+            strValue = row[1]            
             DT = datetime.datetime.utcfromtimestamp(intTS)  
-            dtUtc = DT.astimezone(dateutil.tz.gettz('UTC'))
+            # works on my system, but not inside podman/docker 
+            # dtUtc = DT.astimezone(dateutil.tz.gettz('UTC'))
+            #works as expected even inside container
+            dtUtc = DT.astimezone(dateutil.tz.tzutc())
             fVal = float(strValue)
             if dtUtc > dtNotBefore:
               lstTupDay.append((intTS,dtUtc,fVal)) # time-stamp, datetime, float-value
@@ -179,17 +182,21 @@ class TransferCounter:
     strTabN = self.createTableName(cId) 
     self.openDB()
     strVals =""
-    for (intTS,dtUtc,fVal) in lstTup:
-#      if len(strVals)>0:
-#        strVals = strVals+','
-#      strVals = strVals+"({},{})".format(DT.isoformat(),fVal )
-      strUtc = dtUtc.strftime('%Y-%m-%d %H:%M:%S')
-
-      strCmd = "INSERT INTO {} (time, value) VALUES ('{}',{})".format(strTabN,strUtc,fVal )
-
-    #strCmd = "INSERT INTO {} (time, value) VALUES ".format(strTabN) + strVals
-
+    if False:
+      # update each row with a single call, very slow
+      for (intTS,dtUtc,fVal) in lstTup:
+        strUtc = dtUtc.strftime('%Y-%m-%d %H:%M:%S')
+        strCmd = "INSERT INTO {} (time, value) VALUES ('{}',{})".format(strTabN,strUtc,fVal )
+        self.mycursor.execute(strCmd)
+    else: # batch insert
+      for (intTS,dtUtc,fVal) in lstTup:
+        strUtc = dtUtc.strftime('%Y-%m-%d %H:%M:%S')
+        if len(strVals)>0:
+          strVals = strVals+','
+        strVals = strVals+"('{}',{})".format(strUtc,fVal )
+      strCmd = "INSERT INTO {} (time, value) VALUES ".format(strTabN) + strVals
       self.mycursor.execute(strCmd)
+
     self.closeDB()
 
 
@@ -202,7 +209,7 @@ class TransferCounter:
     self.mycursor.execute(strCmd)
     myresult = self.mycursor.fetchall()
     if len(myresult) == 0:
-      result = datetime.datetime(2020,11,13) # take earliest reasaonable date, TZ does not matter here
+      result = datetime.datetime(2020,11,13).astimezone(dateutil.tz.tzutc()) # take earliest reasaonable date
     else:
       result = myresult[0][0].replace(tzinfo=dateutil.tz.gettz('UTC'))
     self.closeDB()
@@ -222,11 +229,16 @@ class TransferCounter:
 
   def updateFiles(self, bAll=False, numDaysBack=0): 
     logging.debug("TransferCounter.updateFiles()")
+    strRedirectStdout = " >>{}/FileCopy.log".format(self.strDataDir)
     strTargetDir = self.strDataDir+"/FileDB"
+
+    with open("{}/FileCopy.log".format(self.strDataDir),'a+') as f:
+      f.write("{} updateFiles(bAll={}, numDaysBack={})\n".format(datetime.datetime.now().isoformat(),bAll, numDaysBack))
+
     if bAll:
     # complete history
       strCmd = self.strScpBase + "/FileDB/* {}/".format(strTargetDir)
-      res = os.system(strCmd)
+      res = os.system(strCmd + strRedirectStdout)
       if res != 0:
         raise Exception("Command failed: "+strCmd)
     else:
@@ -236,7 +248,7 @@ class TransferCounter:
       strPattern = "*global_{}_{}_{}.txt".format(useDate.month,useDate.day,useDate.year)
          # copy buscounter, calculationcounter, ... from Linear/
       strCmd = self.strScpBase + "/FileDB/{}/Linear/{} {}/{}/Linear/".format(useDate.year,strPattern,strTargetDir,useDate.year)
-      res = os.system(strCmd)
+      res = os.system(strCmd + strRedirectStdout)
       if res != 0:
         raise Exception("Command failed: "+strCmd)
    
@@ -244,7 +256,7 @@ class TransferCounter:
       for strSd in lstSubDirs:
         # copy raw bus counter data
         strCmd = self.strScpBase + "/FileDB/{}/{}/{}  {}/{}/{}".format(useDate.year,strSd,strPattern,strTargetDir,useDate.year,strSd)
-        res = os.system(strCmd)
+        res = os.system(strCmd + strRedirectStdout)
         if res != 0:
           raise Exception("Command failed: "+strCmd)
 
@@ -259,18 +271,25 @@ class TransferCounter:
       os.mkdir(strTarget1)
 
     strInitalSyncDone = self.strDataDir+"/InitialSyncDone.txt"
+    self.strNameFile = self.strDataDir+"/Name-mapping.txt"
+    bRunFirstFlush = False
+
     if not os.path.isfile(strInitalSyncDone):
+      logging.info("Did not found {}, resetting DB and init from EMS completely".format(strInitalSyncDone))
       with open(strInitalSyncDone,"w") as f:
         f.write(datetime.datetime.now().isoformat())
       self.updateFiles(bAll=True)
+      self.clearCounterTables()
+      bRunFirstFlush = True
 
-    self.strNameFile = self.strDataDir+"/smart1.conf"
+    # prepare name-mapping file and read it  
     if not os.path.isfile(self.strNameFile):
-      strCmd = self.strScpBase + "/smart1.conf {}".format(self.strNameFile)
+      strCmd = self.strScpBase + "/smart1.conf {}/".format(self.strDataDir)
+      logging.debug("cmd: "+strCmd)
       res = os.system(strCmd)
       if res != 0:
         raise Exception("Command failed: "+strCmd)
-      strCmd = "grep Name {} > {}/Name-mapping.txt".format(self.strNameFile,self.strDataDir)
+      strCmd = "grep Name {}/smart1.conf > {}".format(self.strDataDir,self.strNameFile)
       res = os.system(strCmd)
       if res != 0:
         raise Exception("Command failed: "+strCmd)
@@ -278,3 +297,7 @@ class TransferCounter:
       self.updateIdMapping() # do not update every time
     else:
       self.readIdMapping()
+
+    if bRunFirstFlush:
+      logging.info("running first big update for all counters")
+      self.updateAllCounter()
