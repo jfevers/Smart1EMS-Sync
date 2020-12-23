@@ -45,7 +45,7 @@ class TransferCounter:
 
   def __init__(self,config):
     self.dictCounterNames = {}
-    self.dictCounterData ={} 
+    self.bBatchMode = False
 
     self.strDataDir = config['TransferCounter']['DataDir']
     self.strDbHost =  config['TransferCounter']['DB-host']
@@ -126,6 +126,7 @@ class TransferCounter:
 
   def updateOneCounterOneFile(self,CounterId,strCFile,dtNotBefore):
     # dtNotBefore = dtNotBefore-datetime.timedelta(hours=1) ## to debug time zone problem
+    logging.debug("updateOneCounterOneFile({}, {}, {})".format(CounterId,strCFile,dtNotBefore.isoformat()))
     lstTupDay = []
     with open(strCFile) as csvfile:
         reader = csv.reader(csvfile,delimiter=';')
@@ -143,7 +144,6 @@ class TransferCounter:
               lstTupDay.append((intTS,dtUtc,fVal)) # time-stamp, datetime, float-value
             # print('     strDT: {}  dt: {}   value: {}'.format(strTS,DT,fVal))
     lstTupDay.sort(key=lambda tup: tup[0])
-    self.dictCounterData[CounterId].extend(lstTupDay)
     self.sendData(CounterId, lstTupDay)
 
 
@@ -182,13 +182,7 @@ class TransferCounter:
     strTabN = self.createTableName(cId) 
     self.openDB()
     strVals =""
-    if False:
-      # update each row with a single call, very slow
-      for (intTS,dtUtc,fVal) in lstTup:
-        strUtc = dtUtc.strftime('%Y-%m-%d %H:%M:%S')
-        strCmd = "INSERT INTO {} (time, value) VALUES ('{}',{})".format(strTabN,strUtc,fVal )
-        self.mycursor.execute(strCmd)
-    else: # batch insert
+    if self.bBatchMode: # fast, but not robust against double inserts
       for (intTS,dtUtc,fVal) in lstTup:
         strUtc = dtUtc.strftime('%Y-%m-%d %H:%M:%S')
         if len(strVals)>0:
@@ -196,6 +190,15 @@ class TransferCounter:
         strVals = strVals+"('{}',{})".format(strUtc,fVal )
       strCmd = "INSERT INTO {} (time, value) VALUES ".format(strTabN) + strVals
       self.mycursor.execute(strCmd)
+    else: 
+      # update each row with a single call, very slow
+      for (intTS,dtUtc,fVal) in lstTup:
+        strUtc = dtUtc.strftime('%Y-%m-%d %H:%M:%S')
+        strCmd = "INSERT INTO {} (time, value) VALUES ('{}',{})".format(strTabN,strUtc,fVal )
+        try:
+          self.mycursor.execute(strCmd)
+        except Exception as e:
+          logging.error("SQL failed: {}, {}".format(e,strCmd))
 
     self.closeDB()
 
@@ -211,7 +214,7 @@ class TransferCounter:
     if len(myresult) == 0:
       result = datetime.datetime(2020,11,13).astimezone(dateutil.tz.tzutc()) # take earliest reasaonable date
     else:
-      result = myresult[0][0].replace(tzinfo=dateutil.tz.gettz('UTC'))
+      result = myresult[0][0].replace(tzinfo=dateutil.tz.tzutc())
     self.closeDB()
       
     return result
@@ -223,7 +226,6 @@ class TransferCounter:
     for CounterId in self.dictCounterNames.keys():
       self.prepareTable(CounterId)
       dtNotBefore = self.getLatestEntry(CounterId)
-      self.dictCounterData[CounterId] =[] 
       self.updateOneCounterAllFiles(CounterId, dtNotBefore)
 
 
@@ -300,4 +302,6 @@ class TransferCounter:
 
     if bRunFirstFlush:
       logging.info("running first big update for all counters")
+      self.bBatchMode = True
       self.updateAllCounter()
+      self.bBatchMode = False

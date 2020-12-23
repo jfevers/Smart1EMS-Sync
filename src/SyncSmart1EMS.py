@@ -53,6 +53,7 @@ class SyncSmart1EMS(ServiceAppClass.ServiceAppClass):
         tLast = datetime.datetime.now()-datetime.timedelta(seconds=60)
         tLastHourly = tLast.hour
         tLastDay = tLast.day
+        bFirstRun = True
         while self.bKeepRunning:
             tNow = datetime.datetime.now()
             tDiff = (tNow-tLast).total_seconds()
@@ -63,22 +64,28 @@ class SyncSmart1EMS(ServiceAppClass.ServiceAppClass):
             time.sleep(2)
 
             if self.bSyncCounter:
-                bUpdateDB = False
-                # evers full hour get files from today
-                if tNow.hour > tLastHourly and  tNow.minute == 0:
-                    logging.info('Hourly sync of files today')
-                    tLastHourly = tNow.hour
-                    self.myTrfCntr.updateFiles(numDaysBack=0)
-                    bUpdateDB = True
-                # every midnight get last file changes from yesterday
-                if tNow.day > tLastDay and tNow.hour == 0 and tNow.minute == 1:
-                    logging.info('Daily sync of files from yesterday')
-                    tLastDay = tNow.day
-                    tLastHourly = tNow.hour
-                    self.myTrfCntr.updateFiles(numDaysBack=1)
-                    bUpdateDB = True
-                if bUpdateDB:
-                    self.myTrfCntr.updateAllCounter() # insert into DB
+                try: 
+                    bUpdateDB = False
+                    # evers full hour get files from today
+                    if bFirstRun or (tNow.hour > tLastHourly and  tNow.minute == 0):
+                        logging.info('Hourly sync of files today')
+                        tLastHourly = tNow.hour
+                        self.myTrfCntr.updateFiles(numDaysBack=0)
+                        bUpdateDB = True
+                        bFirstRun = False
+                    # every midnight get last file changes from yesterday
+                    if tNow.day > tLastDay and tNow.hour == 0 and tNow.minute == 1:
+                        logging.info('Daily sync of files from yesterday')
+                        tLastDay = tNow.day
+                        tLastHourly = tNow.hour
+                        self.myTrfCntr.updateFiles(numDaysBack=1)
+                        bUpdateDB = True
+                    if bUpdateDB:
+                        self.myTrfCntr.updateAllCounter() # insert into DB
+                except Exception as e:
+                    logging.error("TransferCounter failed: {}".format(e))
+                    logging.error("disabling SyncCounter for now")
+                    self.bSyncCounter = False
         self.myXml2Mqtt.cleanUp()
 
 
