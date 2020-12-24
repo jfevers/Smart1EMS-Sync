@@ -261,7 +261,8 @@ class TransferCounter:
         strCmd = self.strScpBase + "/FileDB/{}/{}/{}  {}/{}/{}".format(useDate.year,strSd,strPattern,strTargetDir,useDate.year,strSd)
         res = os.system(strCmd + strRedirectStdout)
         if res != 0:
-          raise Exception("Command failed: "+strCmd)
+          logging.error("Command failed, but ignoring: "+strCmd)
+          #raise Exception("Command failed: "+strCmd)
 
 
 
