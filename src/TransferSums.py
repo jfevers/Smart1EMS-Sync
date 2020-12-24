@@ -89,7 +89,7 @@ class TransferSums(TransferCounter.TransferCounter):
                 if dt >= self.dtNotBefore:
                     strValue = row[1]            
                     fVal = float(strValue)
-                    strId = '{}-{:02d}-{:02d}'.format(year,month,0)
+                    strId = '{}-{:02d}-{:02d}'.format(year,month,15)
                     lstTupMonth.append((strId, year,month,0,fVal))
     return lstTupMonth
 
@@ -109,7 +109,8 @@ class TransferSums(TransferCounter.TransferCounter):
     self.mycursor.execute(strCmd)
     myresult = self.mycursor.fetchall()
     if len(myresult) == 0:
-      strCmd = "CREATE TABLE {} (id varchar(50), year int, month int, day int, value double,PRIMARY KEY(id))".format(strTabN)
+#      strCmd = "CREATE TABLE {} (id varchar(50), year int, month int, day int, value double,PRIMARY KEY(id))".format(strTabN)
+      strCmd = "CREATE TABLE {} (date datetime, year int, month int, day int, value double,PRIMARY KEY(date))".format(strTabN)
       self.mycursor.execute(strCmd)
     self.closeDB()
 
@@ -133,8 +134,11 @@ class TransferSums(TransferCounter.TransferCounter):
     for (strId, year,month,day,fVal) in lstTup:
         if len(strVals)>0:
             strVals = strVals+','
-        strVals = strVals+"('{}',{},{},{},{})".format(strId,year,month,day,fVal )
-    strCmd = "INSERT INTO {} (id, year, month, day, value) VALUES ".format(strTabN) + strVals
+        if day != 0: # the monthly entries have the date year-month-15 and collide with the real day, so set the time different
+          strVals = strVals+"('{} 11:00:00',{},{},{},{})".format(strId,year,month,day,fVal )
+        else:
+          strVals = strVals+"('{} 12:00:00',{},{},{},{})".format(strId,year,month,day,fVal )
+    strCmd = "INSERT INTO {} (date, year, month, day, value) VALUES ".format(strTabN) + strVals
     self.mycursor.execute(strCmd)
     self.closeDB()
 
