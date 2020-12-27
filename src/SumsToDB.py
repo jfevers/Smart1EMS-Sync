@@ -5,29 +5,15 @@ import re
 import mysql.connector
 import os
 import logging
-import TransferCounter
+import CtrToDB
 
 
 
 
 
-class TransferSums(TransferCounter.TransferCounter):
+class SumsToDB(CtrToDB.CtrToDB):
  
 
-  '''
-  Read all defined mappings from IDs to names and check for which of them 
-  we have data files. 
-  '''
-  def readIdMappingFromDB(self):
-    logging.debug("readIdMappingFromDB()")
-    self.openDB()
-    self.mycursor.execute("SELECT counterId,CounterName from CounterNames")
-    myresult = self.mycursor.fetchall()
-    self.closeDB()
-    for i in myresult:
-            id = i[0]
-            self.dictCounterNames[id] = i[1]
-  
 
   def updateOneCounterAllSumFiles(self,CounterId):
     CounterName = self.dictCounterNames[CounterId]

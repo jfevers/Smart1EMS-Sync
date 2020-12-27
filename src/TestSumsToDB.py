@@ -1,11 +1,11 @@
 import ServiceAppClass
-import TransferSums
+import SumsToDB
 
-class TestTransferSums(ServiceAppClass.ServiceAppClass):
+class TestSumsToDB(ServiceAppClass.ServiceAppClass):
 
     def __init__(self):
-        super().__init__(TransferSums.TransferSums.registerConfigEntries, "TransferCounter")
-        self.myUpdater = TransferSums.TransferSums(self.config)            
+        super().__init__(SumsToDB.SumsToDB.registerConfigEntries, "TestCtrToDB")
+        self.myUpdater = SumsToDB.SumsToDB(self.config)            
 
 
 
@@ -17,5 +17,5 @@ class TestTransferSums(ServiceAppClass.ServiceAppClass):
 
 
 #### main ###
-myTester = TestTransferSums()
+myTester = TestSumsToDB()
 myTester.run()

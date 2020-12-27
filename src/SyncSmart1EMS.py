@@ -6,7 +6,8 @@ import os
 import sys
 import datetime
 import XmlRpc2Mqtt
-import TransferCounter
+import CtrToDB
+import TransferFiles
 
 
 
@@ -24,7 +25,10 @@ class SyncSmart1EMS(ServiceAppClass.ServiceAppClass):
     @staticmethod
     def registerConfigEntries(config):
         XmlRpc2Mqtt.XmlRpc2Mqtt.registerConfigEntries(config)
-        TransferCounter.TransferCounter.registerConfigEntries(config)
+        TransferFiles.TransferFiles.registerConfigEntries(config)
+        CtrToDB.CtrToDB.registerConfigEntries(config)
+        # remove duplicate entry of data-dir before __init__
+        #del config['TransferCounter']['DataDir']
         config['SyncSmart1EMS'] = {
         'sync-counter': 'False',
         'loglevel': 'INFO'
@@ -35,7 +39,11 @@ class SyncSmart1EMS(ServiceAppClass.ServiceAppClass):
     def __init__(self):
         super().__init__(self.registerConfigEntries, "SyncSmart1EMS")
         self.myXml2Mqtt = XmlRpc2Mqtt.XmlRpc2Mqtt(self.config)            
-        self.myTrfCntr = TransferCounter.TransferCounter(self.config)            
+        self.myTrfFiles = TransferFiles.TransferFiles(self.config)            
+        # re-add datadir as reference
+        self.config['CtrToDB']['DataDir'] = self.config['TransferFiles']['DataDir']
+        self.myTrfCntr = CtrToDB.CtrToDB(self.config)            
+
         self.myXml2Mqtt.describeChannels()
         self.bSyncCounter = str2Bool(self.config['SyncSmart1EMS']['sync-counter'])
         strLogLevel = self.config['SyncSmart1EMS']['loglevel']
@@ -46,8 +54,9 @@ class SyncSmart1EMS(ServiceAppClass.ServiceAppClass):
 
     def run(self):
         if self.bSyncCounter:
-            logging.info("Preparing TransferCounter")
-            self.myTrfCntr.checkAndPrepareDirectories()
+            logging.info("Preparing TransferFile and CtrToDB")
+            self.myTrfFiles.checkAndPrepareDirectories()
+            self.myTrfCntr.readIdMappingFromDB()
 
         self.bKeepRunning = True
         tLast = datetime.datetime.now()-datetime.timedelta(seconds=60)
@@ -70,7 +79,7 @@ class SyncSmart1EMS(ServiceAppClass.ServiceAppClass):
                     if bFirstRun or (tNow.hour > tLastHourly and  tNow.minute == 0):
                         logging.info('Hourly sync of files today')
                         tLastHourly = tNow.hour
-                        self.myTrfCntr.updateFiles(numDaysBack=0)
+                        self.myTrfFiles.updateFiles(numDaysBack=0)
                         bUpdateDB = True
                         bFirstRun = False
                     # every midnight get last file changes from yesterday
@@ -78,7 +87,7 @@ class SyncSmart1EMS(ServiceAppClass.ServiceAppClass):
                         logging.info('Daily sync of files from yesterday')
                         tLastDay = tNow.day
                         tLastHourly = tNow.hour
-                        self.myTrfCntr.updateFiles(numDaysBack=1)
+                        self.myTrfFiles.updateFiles(numDaysBack=1)
                         bUpdateDB = True
                     if bUpdateDB:
                         self.myTrfCntr.updateAllCounter() # insert into DB

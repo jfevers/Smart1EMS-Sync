@@ -29,17 +29,15 @@ def cleanUtfSeqences(strIn):
 
 
 
-class TransferCounter:
+class CtrToDB:
   @staticmethod
   def registerConfigEntries(config):
-    config['TransferCounter'] = {
-        'DataDir': '/my/data/tmp/dir',
+    config['CtrToDB'] = {
+       # 'DataDir': '/my/data/tmp/dir', # need it for isolated tests, but remove it for integration to not have double entry in config file
         'DB-host':'myDatabaseHost',
         'DB-user':'myDatabaseUser',
         'DB-pwd':'mySecretPassword',
         'DB-db': 'myDbName',
-        'Ems-address':'name_or_ip_of_EMS',
-        'SSH-ID': 'id_or_file_with_priv_key',
         'date-not-before': '2020-11-01'
         }
 
@@ -47,16 +45,13 @@ class TransferCounter:
   def __init__(self,config):
     self.dictCounterNames = {}
     self.bBatchMode = False
-
-    self.strDataDir = config['TransferCounter']['DataDir']
-    self.strDbHost =  config['TransferCounter']['DB-host']
-    self.strDbUser =  config['TransferCounter']['DB-user']
-    self.strDbPwd =  config['TransferCounter']['DB-pwd']
-    self.strDbDb =   config['TransferCounter']['DB-db']
-    self.strSshId = config['TransferCounter']['SSH-ID']
-    self.strEmsAddr=config['TransferCounter']['ems-address']
-    self.strScpBase = "scp -r -o \"KexAlgorithms +diffie-hellman-group1-sha1\" -o StrictHostKeyChecking=no -i {} root@{}:/Smart1".format(self.strSshId,self.strEmsAddr)
-    self.dtNotBefore = datetime.date.fromisoformat(config['TransferCounter']['date-not-before'])
+    
+    self.strDataDir = config['CtrToDB']['DataDir']
+    self.strDbHost =  config['CtrToDB']['DB-host']
+    self.strDbUser =  config['CtrToDB']['DB-user']
+    self.strDbPwd =  config['CtrToDB']['DB-pwd']
+    self.strDbDb =   config['CtrToDB']['DB-db']
+    self.dtNotBefore = datetime.date.fromisoformat(config['CtrToDB']['date-not-before'])
 
   def openDB(self):
     self.mydb = mysql.connector.connect(host=self.strDbHost, 
@@ -66,6 +61,22 @@ class TransferCounter:
   def closeDB(self):
     self.mydb.commit()
     self.mydb.close()
+
+
+
+  def readIdMappingFromDB(self):
+    logging.debug("readIdMappingFromDB()")
+    self.openDB()
+    self.mycursor.execute("SELECT counterId,CounterName from CounterNames")
+    myresult = self.mycursor.fetchall()
+    self.closeDB()
+    if len(myresult) == 0:
+      self.readIdMapping()
+      self.updateIdMapping()
+    for i in myresult:
+            id = i[0]
+            self.dictCounterNames[id] = i[1]
+
 
 
   '''
@@ -230,80 +241,8 @@ class TransferCounter:
       self.updateOneCounterAllFiles(CounterId, dtNotBefore)
 
 
-  def updateFiles(self, bAll=False, numDaysBack=0): 
-    logging.debug("TransferCounter.updateFiles()")
-    strRedirectStdout = " >>{}/FileCopy.log".format(self.strDataDir)
-    strTargetDir = self.strDataDir+"/FileDB"
-
-    with open("{}/FileCopy.log".format(self.strDataDir),'a+') as f:
-      f.write("{} updateFiles(bAll={}, numDaysBack={})\n".format(datetime.datetime.now().isoformat(),bAll, numDaysBack))
-
-    if bAll:
-    # complete history
-      strCmd = self.strScpBase + "/FileDB/* {}/".format(strTargetDir)
-      res = os.system(strCmd + strRedirectStdout)
-      if res != 0:
-        raise Exception("Command failed: "+strCmd)
-    else:
-      useDate = datetime.date.today()
-      useDate = useDate- datetime.timedelta(days=numDaysBack)
-      # only one day
-      strPattern = "*global_{}_{}_{}.txt".format(useDate.month,useDate.day,useDate.year)
-         # copy buscounter, calculationcounter, ... from Linear/
-      strCmd = self.strScpBase + "/FileDB/{}/Linear/{} {}/{}/Linear/".format(useDate.year,strPattern,strTargetDir,useDate.year)
-      res = os.system(strCmd + strRedirectStdout)
-      if res != 0:
-        raise Exception("Command failed: "+strCmd)
-   
-      lstSubDirs =["B1_A5_S1","B2_A1_S1","B2_A1_S2"] 
-      for strSd in lstSubDirs:
-        # copy raw bus counter data
-        strCmd = self.strScpBase + "/FileDB/{}/{}/{}  {}/{}/{}".format(useDate.year,strSd,strPattern,strTargetDir,useDate.year,strSd)
-        res = os.system(strCmd + strRedirectStdout)
-        if res != 0:
-          logging.error("Command failed, but ignoring: "+strCmd)
-          #raise Exception("Command failed: "+strCmd)
 
 
 
 
-
-
-  def checkAndPrepareDirectories(self):
-    strTarget1 = self.strDataDir+"/FileDB"
-    if not os.path.isdir(strTarget1):
-      os.mkdir(strTarget1)
-
-    strInitalSyncDone = self.strDataDir+"/InitialSyncDone.txt"
-    self.strNameFile = self.strDataDir+"/Name-mapping.txt"
-    bRunFirstFlush = False
-
-    if not os.path.isfile(strInitalSyncDone):
-      logging.info("Did not found {}, resetting DB and init from EMS completely".format(strInitalSyncDone))
-      with open(strInitalSyncDone,"w") as f:
-        f.write(datetime.datetime.now().isoformat())
-      self.updateFiles(bAll=True)
-      self.clearCounterTables()
-      bRunFirstFlush = True
-
-    # prepare name-mapping file and read it  
-    if not os.path.isfile(self.strNameFile):
-      strCmd = self.strScpBase + "/smart1.conf {}/".format(self.strDataDir)
-      logging.debug("cmd: "+strCmd)
-      res = os.system(strCmd)
-      if res != 0:
-        raise Exception("Command failed: "+strCmd)
-      strCmd = "grep Name {}/smart1.conf > {}".format(self.strDataDir,self.strNameFile)
-      res = os.system(strCmd)
-      if res != 0:
-        raise Exception("Command failed: "+strCmd)
-      self.readIdMapping()
-      self.updateIdMapping() # do not update every time
-    else:
-      self.readIdMapping()
-
-    if bRunFirstFlush:
-      logging.info("running first big update for all counters")
-      self.bBatchMode = True
-      self.updateAllCounter()
-      self.bBatchMode = False
+ 
