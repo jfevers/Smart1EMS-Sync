@@ -56,6 +56,11 @@ class TransferFiles:
                     logging.error("Command failed, but ignoring: "+strCmd)
                     #raise Exception("Command failed: "+strCmd)
 
+    def updateErrorLog(self):
+        strCmd = self.strScpBase + "/smart1.sqlite {}/".format(self.strDataDir)
+        res = os.system(strCmd)
+        if res != 0:
+            raise Exception("Command failed: "+strCmd)
 
 
     def checkAndPrepareDirectories(self):
