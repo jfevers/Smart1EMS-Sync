@@ -56,7 +56,17 @@ class SyncSmart1EMS(ServiceAppClass.ServiceAppClass):
         if self.bSyncCounter:
             logging.info("Preparing TransferFile and CtrToDB")
             self.myTrfFiles.checkAndPrepareDirectories()
-            self.myTrfCntr.readIdMappingFromDB()
+
+            if self.myTrfFiles.getResetTables():
+                logging.info("running first big update for all counters")
+                self.myTrfCntr.clearCounterTables()
+                self.myTrfCntr.readIdMapping()
+                self.myTrfCntr.updateIdMapping()
+                self.myTrfCntr.bBatchMode = True
+                self.myTrfCntr.updateAllCounter()
+                self.myTrfCntr.bBatchMode = False
+            else:
+                self.myTrfCntr.readIdMappingFromDB()
 
         self.bKeepRunning = True
         tLast = datetime.datetime.now()-datetime.timedelta(seconds=60)

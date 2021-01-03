@@ -18,7 +18,10 @@ class TransferFiles:
         self.strSshId = config['TransferFiles']['SSH-ID']
         self.strEmsAddr=config['TransferFiles']['ems-address']
         self.strScpBase = "scp -r -o \"KexAlgorithms +diffie-hellman-group1-sha1\" -o StrictHostKeyChecking=no -i {} root@{}:/Smart1".format(self.strSshId,self.strEmsAddr)
+        self.bResetTables = False
 
+    def getResetTables(self):
+        return self.bResetTables
 
 
 
@@ -70,14 +73,13 @@ class TransferFiles:
 
         strInitalSyncDone = self.strDataDir+"/InitialSyncDone.txt"
         self.strNameFile = self.strDataDir+"/Name-mapping.txt"
-        bRunFirstFlush = False
 
         if not os.path.isfile(strInitalSyncDone):
             logging.info("Did not found {}, resetting DB and init from EMS completely".format(strInitalSyncDone))
             with open(strInitalSyncDone,"w") as f:
                 f.write(datetime.datetime.now().isoformat())
             self.updateFiles(bAll=True)
-            self.clearCounterTables()
+            self.bResetTables = True
             bRunFirstFlush = True
 
         # prepare name-mapping file and read it  
@@ -92,8 +94,3 @@ class TransferFiles:
             if res != 0:
                 raise Exception("Command failed: "+strCmd)
 
-        if bRunFirstFlush:
-            logging.info("running first big update for all counters")
-            self.bBatchMode = True
-            self.updateAllCounter()
-            self.bBatchMode = False

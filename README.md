@@ -12,10 +12,12 @@ The service SyncSmart1EMS put both parts together and runs them in background, i
 
 
 # Todos:
+- allow complete file sync without complete wipe of db
+- fix "missing target directory"
+- SumsToDB: something hangs
 - TransferFiles: infere time range to sync backwards automatically
 - SyncSmart1EMS: integrate SumsToDB (longterm-statistics)
 - CtrToDB: integrate bus files
-- transfer smart1.sqlite and send logs from 'alerts' to DB
 - Document setup procedure
 
 

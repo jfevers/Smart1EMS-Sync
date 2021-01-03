@@ -12,9 +12,9 @@ class TestTransferFiles(ServiceAppClass.ServiceAppClass):
     def run(self):
 
         self.myTC.checkAndPrepareDirectories()
-        #self.myTC.updateFiles(numDaysBack=3) # yesterday only
-#        self.myTC.updateFiles(numDaysBack=0)
-        self.myTC.updateErrorLog()
+        #self.myTC.updateFiles(bAll=True) # yesterday only
+        self.myTC.updateFiles(numDaysBack=0)
+#        self.myTC.updateErrorLog()
 
 
 
