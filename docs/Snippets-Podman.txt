@@ -1,5 +1,5 @@
 sudo podman build -t smart1emssync .
-sudo podman create --tz=local --name=SmartEMS-Test -v /home/pods/EMS/config:/EMS/config -v /home/pods/EMS/data:/EMS/data smart1emssync
+sudo podman create --tz=local --name=ems-test -v /home/pods/EMS/config:/EMS/config -v /home/pods/EMS/data:/EMS/data smart1emssync
 
 sudo podman mount SmartEMS-Test
 sudo podman umount SmartEMS-Test

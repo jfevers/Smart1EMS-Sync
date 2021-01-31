@@ -51,6 +51,7 @@ class SumsToDB(CtrToDB.CtrToDB):
         reader = csv.reader(csvfile,delimiter=';')
         for row in reader:
             try:
+              if len(row) >1:
                 day = int(row[0]) # read timestamp
                 dt = datetime.date(year,month,day)
                 if dt >= self.dtNotBefore:
@@ -69,7 +70,7 @@ class SumsToDB(CtrToDB.CtrToDB):
     with open(strCFile) as csvfile:
         reader = csv.reader(csvfile,delimiter=';')
         for row in reader:
-            if len(row) > 0:
+            if len(row) > 1: 
                 month = int(row[0]) # read timestamp
                 dt = datetime.date(year,month,1)
                 if dt >= self.dtNotBefore:

@@ -7,6 +7,7 @@ import sys
 import datetime
 import XmlRpc2Mqtt
 import CtrToDB
+import SumsToDB
 import TransferFiles
 
 
@@ -43,6 +44,7 @@ class SyncSmart1EMS(ServiceAppClass.ServiceAppClass):
         # re-add datadir as reference
         self.config['CtrToDB']['DataDir'] = self.config['TransferFiles']['DataDir']
         self.myTrfCntr = CtrToDB.CtrToDB(self.config)            
+        self.myTrfSums = SumsToDB.SumsToDB(self.config)         
 
         self.myXml2Mqtt.describeChannels()
         self.bSyncCounter = str2Bool(self.config['SyncSmart1EMS']['sync-counter'])
@@ -54,25 +56,33 @@ class SyncSmart1EMS(ServiceAppClass.ServiceAppClass):
 
     def run(self):
         if self.bSyncCounter:
-            logging.info("Preparing TransferFile and CtrToDB")
+            logging.info("Preparing TransferFile, CtrToDB and SumsToDB")
             self.myTrfFiles.checkAndPrepareDirectories()
+            logging.info("Initial sync of all files")
+            self.myTrfFiles.updateFiles(bAll=True) # one complete file sync on start-up
 
-            if self.myTrfFiles.getResetTables():
+            # check if checkAndPrepareDirectories() was an initial run
+            if self.myTrfFiles.getResetTables(): 
                 logging.info("running first big update for all counters")
                 self.myTrfCntr.clearCounterTables()
                 self.myTrfCntr.readIdMapping()
                 self.myTrfCntr.updateIdMapping()
                 self.myTrfCntr.bBatchMode = True
                 self.myTrfCntr.updateAllCounter()
+                self.myTrfSums.updateAllSums()
                 self.myTrfCntr.bBatchMode = False
+                # TODO reset Sums
             else:
                 self.myTrfCntr.readIdMappingFromDB()
+                self.myTrfSums.readIdMappingFromDB()
+                self.myTrfCntr.updateAllCounter()
+                self.myTrfSums.updateAllSums()
 
         self.bKeepRunning = True
         tLast = datetime.datetime.now()-datetime.timedelta(seconds=60)
         tLastHourly = tLast.hour
         tLastDay = tLast.day
-        bFirstRun = True
+        
         while self.bKeepRunning:
             tNow = datetime.datetime.now()
             tDiff = (tNow-tLast).total_seconds()
@@ -86,12 +96,11 @@ class SyncSmart1EMS(ServiceAppClass.ServiceAppClass):
                 try: 
                     bUpdateDB = False
                     # evers full hour get files from today
-                    if bFirstRun or (tNow.hour > tLastHourly and  tNow.minute == 0):
+                    if (tNow.hour > tLastHourly and  tNow.minute == 0):
                         logging.info('Hourly sync of files today')
                         tLastHourly = tNow.hour
                         self.myTrfFiles.updateFiles(numDaysBack=0)
                         bUpdateDB = True
-                        bFirstRun = False
                     # every midnight get last file changes from yesterday
                     if tNow.day > tLastDay and tNow.hour == 0 and tNow.minute == 1:
                         logging.info('Daily sync of files from yesterday')
@@ -101,6 +110,8 @@ class SyncSmart1EMS(ServiceAppClass.ServiceAppClass):
                         bUpdateDB = True
                     if bUpdateDB:
                         self.myTrfCntr.updateAllCounter() # insert into DB
+                        self.myTrfSums.updateAllSums()
+
                 except Exception as e:
                     logging.error("TransferCounter failed: {}".format(e))
                     logging.error("disabling SyncCounter for now")

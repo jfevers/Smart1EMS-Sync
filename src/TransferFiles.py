@@ -27,7 +27,8 @@ class TransferFiles:
 
     def updateFiles(self, bAll=False, numDaysBack=0): 
         logging.debug("updateFiles()")
-        strRedirectStdout = " >>{}/FileCopy.log".format(self.strDataDir)
+#        strRedirectStdout = " >>{}/FileCopy.log".format(self.strDataDir)
+        strRedirectStdout = ""
         strTargetDir = self.strDataDir+"/FileDB"
 
         with open("{}/FileCopy.log".format(self.strDataDir),'a+') as f:
