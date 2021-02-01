@@ -82,6 +82,7 @@ class SyncSmart1EMS(ServiceAppClass.ServiceAppClass):
         tLast = datetime.datetime.now()-datetime.timedelta(seconds=60)
         tLastHourly = tLast.hour
         tLastDay = tLast.day
+        tLastMonth = tLast.month
         
         while self.bKeepRunning:
             tNow = datetime.datetime.now()
@@ -102,7 +103,7 @@ class SyncSmart1EMS(ServiceAppClass.ServiceAppClass):
                         self.myTrfFiles.updateFiles(numDaysBack=0)
                         bUpdateDB = True
                     # every midnight get last file changes from yesterday
-                    if tNow.day > tLastDay and tNow.hour == 0 and tNow.minute == 1:
+                    if ((tNow.day > tLastDay) or (tNow.month > tLastMonth)) and tNow.hour == 0 and tNow.minute == 1:
                         logging.info('Daily sync of files from yesterday')
                         tLastDay = tNow.day
                         tLastHourly = tNow.hour
