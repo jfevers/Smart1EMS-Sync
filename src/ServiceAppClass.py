@@ -12,10 +12,17 @@ class ServiceAppClass:
     myApp = 0
 
     @staticmethod
-    def sigTerm(signum, frame):
+    def sigTerm_(signum, frame):
         logging.warning('Received SIGINT or SIGTERM, going down')
         ServiceAppClass.myApp.stop()
 
+    @staticmethod
+    def sigUsr1_(signum, frame):
+        logging.warning('Received SIGUSR1')
+        ServiceAppClass.myApp.sigUsr1()
+
+    def sigUsr1(self):
+        logging.info('ServiceAppClass.sigUsr1(): doing nothing')
 
     def stop(self):
         self.bKeepRunning = False
@@ -30,9 +37,9 @@ class ServiceAppClass:
             raise Exception("Only one instance possible")
         ServiceAppClass.myApp = self
 
-        signal.signal(signal.SIGTERM, ServiceAppClass.sigTerm)
-        signal.signal(signal.SIGINT, ServiceAppClass.sigTerm)
-
+        signal.signal(signal.SIGTERM, ServiceAppClass.sigTerm_)
+        signal.signal(signal.SIGINT, ServiceAppClass.sigTerm_)
+        signal.signal(signal.SIGUSR1, ServiceAppClass.sigUsr1_)
 
         logging.basicConfig(format='%(asctime)s  %(levelname)s: %(message)s', level=logging.DEBUG)
         if len(sys.argv)<2:

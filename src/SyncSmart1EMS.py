@@ -46,12 +46,16 @@ class SyncSmart1EMS(ServiceAppClass.ServiceAppClass):
         self.myTrfCntr = CtrToDB.CtrToDB(self.config)            
         self.myTrfSums = SumsToDB.SumsToDB(self.config)         
 
+        self.bTriggerSync = False
         self.myXml2Mqtt.describeChannels()
         self.bSyncCounter = str2Bool(self.config['SyncSmart1EMS']['sync-counter'])
         strLogLevel = self.config['SyncSmart1EMS']['loglevel']
         logging.info('Setting loglevel to '+strLogLevel)
         logging.getLogger().setLevel(strLogLevel)
 
+    def sigUsr1(self):
+        logging.info('SyncSmart1EMS.sigUsr1(): triggering sync')
+        self.bTriggerSync = True
 
 
     def run(self):
@@ -97,8 +101,12 @@ class SyncSmart1EMS(ServiceAppClass.ServiceAppClass):
                 try: 
                     bUpdateDB = False
                     # evers full hour get files from today
-                    if (tNow.hour > tLastHourly and  tNow.minute == 0):
-                        logging.info('Hourly sync of files today')
+                    if ((tNow.hour > tLastHourly and  tNow.minute == 0) or self.bTriggerSync):
+                        if self.bTriggerSync:
+                            self.bTriggerSync = False
+                            logging.info('SIGUSR1 sync of files today')
+                        else:
+                            logging.info('Hourly sync of files today')
                         tLastHourly = tNow.hour
                         self.myTrfFiles.updateFiles(numDaysBack=0)
                         bUpdateDB = True

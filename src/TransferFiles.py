@@ -45,20 +45,25 @@ class TransferFiles:
             useDate = useDate- datetime.timedelta(days=numDaysBack)
             # only one day
             strPattern = "*global_{}_{}_{}.txt".format(useDate.month,useDate.day,useDate.year)
-                # copy buscounter, calculationcounter, ... from Linear/
-            strCmd = self.strScpBase + "/FileDB/{}/Linear/{} {}/{}/Linear/".format(useDate.year,strPattern,strTargetDir,useDate.year)
-            res = os.system(strCmd + strRedirectStdout)
-            if res != 0:
-                raise Exception("Command failed: "+strCmd)
+            strPattern2 = "*avg_day_{}_{}.txt".format(useDate.month,useDate.year)
+            # TODO: Missing *svg_month_{year}, sync it with bAll every midnight?
+
+            # copy buscounter, calculationcounter, ... from Linear/
+            for strPat in [strPattern, strPattern2]:    
+                strCmd = self.strScpBase + "/FileDB/{}/Linear/{} {}/{}/Linear/".format(useDate.year,strPat,strTargetDir,useDate.year)
+                res = os.system(strCmd + strRedirectStdout)
+                if res != 0:
+                    raise Exception("Command failed: "+strCmd)
 
             lstSubDirs =["B1_A5_S1","B2_A1_S1","B2_A1_S2"] 
             for strSd in lstSubDirs:
                 # copy raw bus counter data
-                strCmd = self.strScpBase + "/FileDB/{}/{}/{}  {}/{}/{}".format(useDate.year,strSd,strPattern,strTargetDir,useDate.year,strSd)
-                res = os.system(strCmd + strRedirectStdout)
-                if res != 0:
-                    logging.error("Command failed, but ignoring: "+strCmd)
-                    #raise Exception("Command failed: "+strCmd)
+                for strPat in [strPattern, strPattern2]:    
+                    strCmd = self.strScpBase + "/FileDB/{}/{}/{}  {}/{}/{}".format(useDate.year,strSd,strPat,strTargetDir,useDate.year,strSd)
+                    res = os.system(strCmd + strRedirectStdout)
+                    if res != 0:
+                        logging.error("Command failed, but ignoring: "+strCmd)
+                        #raise Exception("Command failed: "+strCmd)
 
     def updateErrorLog(self):
         strCmd = self.strScpBase + "/smart1.sqlite {}/".format(self.strDataDir)
